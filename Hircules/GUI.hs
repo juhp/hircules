@@ -84,22 +84,22 @@ mainwindow = unsafePerformIO windowNew
 
 setupGUI :: IO ()
 setupGUI = do
-  initGUI
+  _ <- initGUI
   let window = mainwindow
   windowSetDefaultSize window 496 382
   windowSetTitle window "Hircules IRC client"
-  onDelete window (const $ shutDown >> return True)
+  _ <- onDelete window (const $ shutDown >> return True)
   notebookSetScrollable book True
   notebookSetPopup book True
-  onSwitchPage book updateTabN
+  _ <- onSwitchPage book updateTabN
   let initwidget = book
   putMVar mainwidget $ toMainWidget initwidget
   containerAdd window initwidget
   widgetShowAll window
   keymap <- newKeymap
   mapM_ (keymapAdd keymap) globalKeyBindings
-  onKeyPress window $ keyPressCB keymap
-  timeoutAdd (yield >> return True) 10
+  _ <- onKeyPress window $ keyPressCB keymap
+  _ <- timeoutAdd (yield >> return True) 10
   return ()
 
 globalKeyBindings :: [Keybinding]
@@ -157,7 +157,7 @@ displayChannelTab switch chan = do
                   let lbltxt = show (n + 1) ++ " " ++ (channame chan)
                   label <- labelNew $ Just lbltxt
                   menulabel <- labelNew $ Just lbltxt
-                  notebookAppendPageMenu book mainbox label menulabel
+                  _ <- notebookAppendPageMenu book mainbox label menulabel
                   return n
   when switch $
       notebookSetCurrentPage book page
@@ -207,8 +207,8 @@ newIRCchannel title nick real = do
   let result = IRCChan {chanbuffer = buffer, channame = (map toLower title), chanreal = real, chanend = endmark, channick = nickend, chanbox = toMainWidget scrollwin, chanentry = entrymark, chanview = view, chanusers = empty, chantopic = "", chancoding = Nothing}
   keymap <- newKeymap
   mapM_ (keymapAdd keymap) $ bufferKeyBindings result
-  onKeyPress view $ keyPressCB keymap
-  afterPasteClipboard view (setEditable result)
+  _ <- onKeyPress view $ keyPressCB keymap
+  _ <- after view pasteClipboard (setEditable result)
   widgetShowAll scrollwin
   return result
 
@@ -356,7 +356,7 @@ searchChannel chan backwds = do
     if null text
        then return ()
        else do
-            swapMVar lastSearchText text
+            _ <- swapMVar lastSearchText text
             result <- (if backwds then textIterBackwardSearch else textIterForwardSearch) startIter text [] Nothing
             maybe (return ()) (\ (start, end) -> do
                                textBufferPlaceCursor buffer (if backwds then start else end)

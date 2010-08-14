@@ -32,5 +32,5 @@ setNickText chan nick = do
   getNickStart :: IO TextIter
   getNickStart = do
     start <- textBufferGetIterAtMark buffer endc
-    textIterForwardChar start
+    _ <- textIterForwardChar start
     return start
