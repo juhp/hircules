@@ -1,4 +1,4 @@
-module MaybeDo (maybeDo, maybeDo_) where
+module Control.Monad.MaybeDo (maybeDo, maybeDo_) where
 
 maybeDo :: Monad m => b -> Maybe a -> (a -> m b) -> m b
 maybeDo b mb act = maybe (return b) act mb

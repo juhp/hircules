@@ -20,7 +20,7 @@
 -- Description
 --
 
-module GtkKeymap (keymapAdd, keyPressCB, newKeymap, Keymap, Keybinding(..))
+module Graphics.UI.Gtk.Keymap (keymapAdd, keyPressCB, newKeymap, Keymap, Keybinding(..))
 where
 import Data.Map (Map)
 import qualified Data.Map as Map

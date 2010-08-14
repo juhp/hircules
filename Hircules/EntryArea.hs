@@ -1,8 +1,8 @@
-module EntryArea
+module Hircules.EntryArea
 where
 
-import Channel
-import Debug
+import Hircules.Channel
+import Debug.State
 import Graphics.UI.Gtk
 
 setEditable :: IRCChannel -> IO ()

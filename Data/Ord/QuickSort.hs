@@ -1,4 +1,4 @@
-module QuickSort where
+module Data.Ord.QuickSort where
 
 quickSort :: Ord a => [a] -> [a]
 quickSort [] =  []

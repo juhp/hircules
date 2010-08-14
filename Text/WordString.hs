@@ -1,4 +1,4 @@
-module WordString where
+module Text.WordString where
 
 import Data.Char (isSpace)
 import Data.List (isPrefixOf)

@@ -1,4 +1,4 @@
-module CTCP where
+module Hircules.CTCP where
 
 ctcpQuoteChar :: Char
 ctcpQuoteChar = '\001'

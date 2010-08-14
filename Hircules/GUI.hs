@@ -17,7 +17,7 @@
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 --  General Public License for more details.
 
-module GUI (addIRCchannel,
+module Hircules.GUI (addIRCchannel,
             alertchannel,
             allchannel,
             chanI,
@@ -42,19 +42,19 @@ import Data.Map (empty)
 -- import Data.Maybe (fromMaybe, fromJust, isJust)
 -- import System.Exit
 import System.IO.Unsafe (unsafePerformIO)
-import System.Time
-import System.Locale
+import Data.Time.LocalTime (getZonedTime)
 
-import Channel
-import Debug
-import EntryArea (setEditable)
+import Hircules.Channel
+import Debug.State
+import Hircules.EntryArea (setEditable)
 import Graphics.UI.Gtk hiding (afterPasteClipboard)
 import Graphics.UI.Gtk.Multiline.TextView(afterPasteClipboard)
+import Graphics.UI.Gtk.Gdk.Events
 -- import Hierarchy (toContainer)
-import GtkKeymap
-import MaybeDo
-import Threads
-import WordString
+import Graphics.UI.Gtk.Keymap
+import Control.Monad.MaybeDo
+import Hircules.Threads
+import Text.WordString
 
 -- tabchannel :: MVar (FiniteMap Int Channel)
 -- tabchannel = unsafePerformIO $ newMVar empty
@@ -104,16 +104,16 @@ setupGUI = do
 
 globalKeyBindings :: [Keybinding]
 globalKeyBindings =
-    [ KB [Control] "1" (switchToTab 0)
-    , KB [Control] "2" (switchToTab 1)
-    , KB [Control] "3" (switchToTab 2)
-    , KB [Control] "4" (switchToTab 3)
-    , KB [Control] "5" (switchToTab 4)
-    , KB [Control] "6" (switchToTab 5)
-    , KB [Control] "7" (switchToTab 6)
-    , KB [Control] "8" (switchToTab 7)
-    , KB [Control] "9" (switchToTab 8)
-    , KB [Control] "0" (switchToTab 9)
+    [ KB [Alt] "1" (switchToTab 0)
+    , KB [Alt] "2" (switchToTab 1)
+    , KB [Alt] "3" (switchToTab 2)
+    , KB [Alt] "4" (switchToTab 3)
+    , KB [Alt] "5" (switchToTab 4)
+    , KB [Alt] "6" (switchToTab 5)
+    , KB [Alt] "7" (switchToTab 6)
+    , KB [Alt] "8" (switchToTab 7)
+    , KB [Alt] "9" (switchToTab 8)
+    , KB [Alt] "0" (switchToTab 9)
     , KB [Control,Shift] "W" hideCurrentChannel
     , KB [Control] "q" shutDown
     ]
@@ -134,7 +134,7 @@ globalKeyBindings =
 
 bufferKeyBindings :: IRCChannel -> [Keybinding]
 bufferKeyBindings chan =
-  [ KB [Control] "Return" (sendInput chan)
+  [ KB [] "Return" (sendInput chan)
   , KB [Control] "r" (searchChannel chan True)
   , KB [Control] "s" (searchChannel chan False)
   ]
@@ -272,8 +272,8 @@ writeTextRaw str = writeTextLn rawchannel True str
 
 timeStamp :: IO String
 timeStamp = do
-  ct <- (getClockTime >>= toCalendarTime)
-  return $ formatCalendarTime defaultTimeLocale (timeFmt defaultTimeLocale) ct
+  ct <- getZonedTime
+  return $ show ct
 
 type Interactive = ([String], Channel)
 
@@ -337,7 +337,7 @@ updateTabN n = do
 
 -- FIXME todo
 renameChannelTab :: Channel -> Channel -> IO ()
-renameChannelTab old new = do
+renameChannelTab _old _new = do
     return ()    
 
 lastSearchText :: MVar String

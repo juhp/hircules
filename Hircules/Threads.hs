@@ -17,7 +17,7 @@
 --  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 --  General Public License for more details.
 
-module Threads (killThreads, newThread, shutDown) where
+module Hircules.Threads (killThreads, newThread, shutDown) where
 
 import Control.Concurrent
 import Control.Concurrent.MVar (MVar, newMVar)

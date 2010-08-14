@@ -1,10 +1,10 @@
-module Config (configDir, logDir)
+module Hircules.Config (configDir, logDir)
 where
 
 import System.Environment (getEnv)
 import System.IO.Unsafe (unsafePerformIO)
 
-import Directories ((+/+))
+import Hircules.Directories ((+/+))
 
 homeDir :: FilePath
 homeDir = unsafePerformIO $ getEnv "HOME"

@@ -1,9 +1,9 @@
-module Debug (debug, debugDo, setDebug)
+module Debug.State (debug, debugDo, setDebug)
 where
 
 import Foreign (unsafePerformIO)
 import Control.Concurrent.MVar (newMVar, swapMVar, readMVar, MVar)
-import Monad (when)
+import Control.Monad (when)
 import Control.Monad.Trans (liftIO, MonadIO)
 
 debugging :: MVar Bool

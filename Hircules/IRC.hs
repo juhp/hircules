@@ -9,7 +9,7 @@
 --
 --  See the "COPYING" file for license information.
 
-module IRC (IRC,
+module Hircules.IRC (IRC,
             IRCMessage(..),
             IRCRState(..),
             IRCRWState(..),
@@ -60,13 +60,14 @@ module IRC (IRC,
             MODULE(..))
 where
 
-import Monad
-import Maybe
+--import Monad
+import Prelude hiding (catch)
+import Data.Maybe
 import GHC.IO
 import GHC.IOBase (Handle) -- , BufferMode(..))
 import Control.Concurrent
 import Control.Concurrent.Chan
-import Control.Exception (try)
+import Control.OldException (catch)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Char (toLower)
@@ -78,22 +79,21 @@ import Data.IORef
 import System.Exit
 import System.IO (hClose, hIsEOF, hPutStrLn)
 -- import System.IO.Unsafe (unsafePerformIO)
-import System.Locale
-import System.Time
+import Data.Time.LocalTime (getZonedTime)
 
 -- import Gtk (labelSetText, widgetShow)
 
-import Channel
-import Charset
+import Hircules.Channel
+-- import Hircules.Charset
 -- import Config (logDir)
-import Debug
+import Debug.State
 -- import Directories ((+/+))
-import EntryArea (setNickText)
-import GUI
-import MaybeDo
+import Hircules.EntryArea (setNickText)
+import Hircules.GUI
+import Control.Monad.MaybeDo
 -- import Threads
-import UTF8 (encodeUTF8)
-import WordString
+import Codec.Binary.UTF8.String (encodeString)
+import Text.WordString
 
 data IRCRState
   = IRCRState ()
@@ -285,8 +285,8 @@ ircWriteEnc ch msg = do
     mid = msgMiddle msg
     tale = msgTail msg
     encodeMsg :: Maybe String -> IRCMessage
-    encodeMsg coding = msg { msgMiddle = encodeCharset coding mid,
-                             msgTail = encodeCharset coding tale}
+    encodeMsg _coding = msg { msgMiddle = mid,
+                             msgTail = tale}
 
 ircInput :: IRC Interactive
 ircInput = liftIO (readChan chanI)
@@ -314,11 +314,9 @@ ircDisplayAlert alert str = liftIO $ writeTextLn alertchannel alert str
 readerLoop :: ThreadId -> Chan IRCMessage -> Chan IRCMessage -> Handle -> IO ()
 readerLoop threadmain chanR chanW h
   = do  -- liftIO (putStrLn "Running reader loop...")
-        exc <- try readerLoop'
-        case exc of
-           Left err -> throwTo threadmain err
-           Right _ -> return ()
+        catch readerLoop' (throwTo threadmain)
   where
+    readerLoop' :: IO ()
     readerLoop'
       = do eof <- hIsEOF h
 	   if eof
@@ -340,10 +338,7 @@ readerLoop threadmain chanR chanW h
 
 writerLoop :: ThreadId -> Chan IRCMessage -> Handle -> IO ()
 writerLoop threadmain chanW h
-  = do exc <- try writerLoop'
-       case exc of
-           Left e  -> throwTo threadmain e
-           Right _ -> return ()
+  = catch writerLoop' (throwTo threadmain)
   where
     writerLoop'
       = do msg <- readChan chanW
@@ -384,9 +379,8 @@ encodeMessage msg =
     encodeTail t = showString " :" . showString t
 
 decodeMessage :: String -> IRCMessage
-decodeMessage rawtxt =
-    let txt = decodeCharset rawtxt
-        first = whead txt
+decodeMessage txt =
+    let first = whead txt
 	(prefix,cmdparams) = if startColon first
 			        then (tail first, wtail txt)
 			        else ("",txt)
@@ -485,12 +479,12 @@ logMessage txt = do
    h <- gets ircLogFile
    time <- liftIO timeStamp
    date <- liftIO dateStamp
-   liftIO $ hPutStrLn h $ date +-+ time +-+ (encodeUTF8 txt)
+   liftIO $ hPutStrLn h $ date +-+ time +-+ (encodeString txt)
 
 dateStamp :: IO String
 dateStamp = do
-  ct <- (getClockTime >>= toCalendarTime)
-  return $ formatCalendarTime defaultTimeLocale (iso8601DateFormat Nothing) ct
+  ct <- getZonedTime
+  return $ show ct
 
 addChanUsers :: [(String,Bool)] -> String -> IRC ()
 addChanUsers userops ch = do
@@ -579,7 +573,7 @@ renameUser old new = do
       maybeDo_ mchan $ \ chan -> do
           let chan' = chan { channame = new }
               chans' = Map.delete old chans
-          modify (\ s -> s { ircChannels = Map.insert new chan chans' })
+          modify (\ s -> s { ircChannels = Map.insert new chan' chans' })
           liftIO $ renameChannelTab old new
 
 displayIRCchannel :: String -> IRC ()
