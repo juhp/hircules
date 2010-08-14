@@ -467,13 +467,7 @@ logMessage :: String -> IRC ()
 logMessage txt = do
    h <- gets ircLogFile
    time <- liftIO timeStamp
-   date <- liftIO dateStamp
-   liftIO $ hPutStrLn h $ date +-+ time +-+ (encodeString txt)
-
-dateStamp :: IO String
-dateStamp = do
-  ct <- getZonedTime
-  return $ show ct
+   liftIO $ hPutStrLn h $ time +-+ (encodeString txt)
 
 addChanUsers :: [(String,Bool)] -> String -> IRC ()
 addChanUsers userops ch = do

@@ -269,7 +269,7 @@ writeTextRaw str = writeTextLn rawchannel True str
 timeStamp :: IO String
 timeStamp = do
   ct <- getZonedTime
-  return $ show ct
+  return $ formatTime defaultTimeLocale "%Y-%m-%d %H:%M:%S" ct
 
 type Interactive = ([String], Channel)
 
