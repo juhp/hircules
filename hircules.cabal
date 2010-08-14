@@ -23,5 +23,5 @@ source-repository head
 Executable hircules
     main-is:       Main.hs
     ghc-options:   -Wall
-    build-depends: base >= 4 && < 5, gtk >= 0.10.0, utf8-string, time, containers, mtl, directory, network, old-time, old-locale
+    build-depends: base >= 4 && < 5, gtk >= 0.11.0, utf8-string, time, containers, mtl, directory, network, old-time, old-locale
     other-modules: Control.Monad.MaybeDo, Data.Ord.QuickSort, Debug.State, Graphics.UI.Gtk.Keymap, Hircules.Channel, Hircules.Config, Hircules.CTCP, Hircules.Directories, Hircules.EntryArea, Hircules.GUI, Hircules.IRC, Hircules.Main, Hircules.Threads, Text.WordString
