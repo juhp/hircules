@@ -4,8 +4,6 @@ Synopsis:      IRC client
 Description:
     Hircules is an IRC (Internet Relay Chat) client with a gtk GUI.
     .
-    See the old project page http://haskell.org/hircules for more info.
-    .
     Summary of changes:
     .
     0.4.1: update the gtk version dependency
@@ -18,6 +16,7 @@ Maintainer:    Jens Petersen <petersen@haskell.org>
 Copyright:     2003, 2004, 2006, 2008-2010 Jens-Ulrik Petersen <petersen@haskell.org>
                2003 Andrew J. Bromage
 Stability:     Experimental
+Homepage:      http://haskell.org/hircules
 Category:      network
 Build-Type:    Simple
 Cabal-Version: >= 1.6
