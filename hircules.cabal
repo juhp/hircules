@@ -6,9 +6,9 @@ Description:
     .
     Summary of changes:
     .
-    0.4.1: update the gtk version dependency
+    * 0.4.1: update the gtk version dependency
     .
-    0.4: build updates for ghc-6.12 and gtk-0.11
+    * 0.4: build updates for ghc-6.12 and gtk-0.11
 License:       GPL
 License-file:  LICENSE
 Author:        Jens Petersen <petersen@haskell.org>
