@@ -170,8 +170,11 @@ newIRCchannel title nick real = do
   set e [textTagEditable := True]
   ne <- textTagNew $ Just "not-editable"
   set ne [textTagEditable := False]
+  font <- textTagNew $ Nothing
+  set font [textTagFamily := "Monospace"]
   textTagTableAdd tTable e
   textTagTableAdd tTable ne
+  textTagTableAdd tTable font
   view <- textViewNewWithBuffer buffer
   textViewSetWrapMode view WrapWordChar
   textViewSetEditable view True
@@ -195,6 +198,7 @@ newIRCchannel title nick real = do
   start <- textBufferGetStartIter buffer
   end <- textBufferGetEndIter buffer
   textBufferApplyTagByName buffer "not-editable" start end
+  textBufferApplyTag buffer font start end
   endmark <- textBufferCreateMark buffer Nothing start False
   entry <- textBufferGetEndIter buffer
   entrymark <- textBufferCreateMark buffer Nothing entry True
