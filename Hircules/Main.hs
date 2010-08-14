@@ -62,8 +62,8 @@ main = do
              | Help `elem` opts -> help
              | Version `elem` opts -> putStrLn $ "hircules " ++ showVersion version
          (opts, args, errs)
-             | null errs && length args == 1
-               -> main' opts $ listToMaybe args
+             | null errs && length args <= 1
+               -> main' opts $ unwords args
              | length errs > 0 -> help >> error (concat errs)
              | otherwise -> help
 
@@ -71,14 +71,14 @@ progname :: String
 progname = unsafePerformIO getProgName
 
 help :: IO ()
-help = putStr $ usageInfo ("Usage: USER=nick " ++ progname ++ " [OPTION]... <ircserver>\n") options
+help = putStr $ usageInfo ("Usage: USER=nick " ++ progname ++ " [OPTION]... [ircserver]\n") options
 
-main' :: [Flag] -> Maybe String -> IO ()
-main' opts mserver = do
-    setDebug debugging
+main' :: [Flag] -> String -> IO ()
+main' opts arg = do
+    _ <- setDebug debugging
     makeConfigDir
     setupGUI
-    newThread $ runIRC $ maybe runIrcInit runIrcNoInit mserver
+    _ <- newThread $ runIRC $ runIrcInit arg
     mainGUI
     killThreads
   where
@@ -91,8 +91,8 @@ main' opts mserver = do
   runIRC :: IO () -> IO ()
   runIRC m =
     catch m (\ e -> putStrLn ("Exception: " ++ show e))
-  runIrcNoInit :: String -> IO ()
-  runIrcNoInit server = withSocketsDo $ do
+  runIrcInit :: String -> IO ()
+  runIrcInit server = withSocketsDo $ do
     s <- liftIO (connectTo hostname (PortNumber portnum))
     hSetBuffering s NoBuffering
     threadmain <- myThreadId
@@ -122,7 +122,7 @@ main' opts mserver = do
     bracket_ (return ()) (killThread threadr >> killThread threadw)
 		 (runReaderT (evalStateT ircMain initState) rstate)
     where
-    (hostname,port') = break (== ':') server
+    (hostname,port') = if null server then ("irc.freenode.net","") else break (== ':') server
     port = if null port' then "6667" else tail port'
     portnum = fromIntegral (read port :: Integer)
     initChans = Map.fromList $ [("%all", allchannel),
@@ -130,45 +130,6 @@ main' opts mserver = do
                                         (if debugging
                                             then [("%raw", rawchannel)]
                                             else [])
-
-  runIrcInit :: IO ()
-  runIrcInit = withSocketsDo $ do
-    displayChannelTab True allchannel
---     s <- liftIO (connectTo hostname (PortNumber portnum))
---     hSetBuffering s NoBuffering
---     threadmain <- myThreadId
---     chanR <- newChan
---     chanW <- newChan
---     threadr <- newThread (readerLoop threadmain chanR chanW s)
---     threadw <- newThread (writerLoop threadmain chanW s)
---     h <- liftIO $ openFile (logDir +/+ hostname) AppendMode
---     hSetBuffering h LineBuffering
---     let rstate = IRCRState ()
---     bracket_ (return ()) (killThread threadr >> killThread threadw)
--- 		 (runReaderT (evalStateT ircMain initState) rstate)
---   where
---   (hostname,port') = break (== ':') server
---   port = if null port' then "6667" else tail port'
---   portnum = fromIntegral (read port :: Integer)
---   initChans = listToFM [("%all",allchannel),
---                         ("%raw",rawchannel),
---                         ("%raw",rawchannel)]
---   initState =
--- 	    IRCRWState { ircServer      = hostname
---                        , ircReadChan    = chanR
---                        , ircReadThread  = threadr
---                        , ircWriteChan   = chanW
---                        , ircWriteThread = threadw
---                        , ircSocket      = s
---                        , ircLogFile     = h
--- 		       , ircPrivilegedUsers = listToFM [ (user,True) | user <- [] ]
--- 		       , ircChannels = initChans
--- 		       , ircNick = ""
--- 		       , ircModules = Map.empty
--- 		       , ircCommands = Map.empty
--- 		       , ircModuleState = Map.empty
--- 		       , ircUsers = Map.empty
---                        }
 
 ircMain :: IRC ()
 ircMain = do
