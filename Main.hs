@@ -4,5 +4,5 @@
 --
 --  See the "LICENSE" file for license information.
 
-module Main where
+module Main (main) where
 import Hircules.Main (main)
