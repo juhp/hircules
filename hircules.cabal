@@ -1,5 +1,5 @@
 Name:          hircules
-Version:       0.4
+Version:       0.4.1
 Synopsis:      IRC client
 Description:
     Hircules is an IRC (Internet Relay Chat) client with a gtk GUI.
