@@ -1,0 +1,74 @@
+2003-05-16  Jens Petersen  <petersen@redhat.com>
+
+	* configure.ac: Version 0.1
+
+	* Makefile: Moved to Makefile.am
+
+	* hircules.spec.in: New file.
+
+2003-05-15  Jens Petersen  <petersen@haskell.org>
+
+	* Version.hs: Moved to "lib/Version.hs.in".
+
+	* Threads.hs: Moved to "lib/".
+	
+	* Main.hs: Disable most of the lambdabot extension modules for
+	now.
+	(myuserinfo): In here for now, until user configuration done.
+	(Flag): For getopt parsing added.
+	(options): Ditto.
+	(main): New function to do cmdline parsing.
+	(progname): Unsafe constant added.
+	(help): Added for getopt help output.
+	(main'): Renamed from main.
+	(ircMain): Install less extensions.
+	(doRPL_WELCOME): Disable autojoins for now.
+	(parseCmd): Fix "/topic" with no args to send channel name in tail.
+	"/quit" uses versionString.
+	
+	* IRC.hs (ircnick): Lambdabot compatibility function.
+	(ircSignOn): Sign on with name in tail not middle.
+	(runIRC): Now just takes one string argument "host:port". Parse
+	it.  Disable admin privelege in initState for now.
+
+	* GUI.hs (setupGUI): Disable vpane temporarily for 0.1 release.
+
+2003-05-14  Jens Petersen  <petersen@haskell.org>
+
+	* Threads.hs: New module.
+	(threads): MVar to hold list of threads forked.
+	(newThread): forkIO wrapper which adds new ThreadId to threads.
+	(killThreads): Kill all threads added with newThread.
+	(shutDown): Quit gtk and kill threads.
+
+	* TODO: New file.
+
+	* Main.hs (main): Use newThread wrapper instead of forkIO.
+	Run killThreads after mainGUI.
+	(processReadMessage): Remove debugging msg output.
+	Add ERROR message handler.  Remove nop handlers.
+	(doJOIN): Use addChannel instead of doJoinChannel.
+	(doJoinChannel) Moved to addChannel.
+	(doERROR): New handler that shoudl take care of auto-reconnection.
+	(doRPL_WELCOME): Check our nick and update state.
+	(doDisplay): For other number commands, display rest of middle of
+	message, not just last word.
+	(doPersonalMsg): Use addChannel instead of doJoinChannel.
+	(processInput): Don't display to rawchannel here.
+
+	* IRC.hs (setNick): Update channel nick labels.
+	(addChannel): Take real channel arg, instead of topic and chan.
+	Check channel membership and nick.  Call addIRCchannel before
+	updating ircChannels state.
+	(ircSend): Display in rawchannel.
+	(runIRC): Use newThread wrapper instead of forkIO.
+	(rawchannel): Moved here from GUI.
+	(readerLoop): Close handle and terminate on eof.
+
+	* GUI.hs: Add Label record to IRCChannel.
+	(rawchannel): Move to IRC module.
+	(setupGUI): Add vpane for all channel.
+	(globalKeyBindings): Change default modifier from mod4 to Ctrl.
+	(addIRCchannel): Add argument nick, and use to for new Label in
+	front of entry box.
+

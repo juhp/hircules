@@ -1,0 +1,7 @@
+Andrew J. Bromage <ajb@spamcop.net>
+* wrote the original Main and IRC modules
+
+Jens Petersen <petersen@haskell.org>
+* modified Main and IRC modules
+* added GUI modules and other minor files
+* added autotools files for packaging

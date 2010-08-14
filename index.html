@@ -1,0 +1,64 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+  <head>
+    <title>Hircules - an IRC client in haskell</title>
+  </head>
+
+  <body>
+    <h1>Hircules - an IRC client in haskell</h1>
+
+    <p>
+      Hircules (pronounced like the Greek hero) is an IRC
+      client written in Haskell.  The code is initially
+      based on <a
+      href="http://www.haskell.org/hawiki/LambdaBot">lambdabot</a>
+      and uses <a
+      href="http://gtk2hs.sourceforge.net/">gtk2hs</a> for
+      the UI.  It currently supports tabs
+      for channels and private dialogs, but it is still
+      quite simple. I'm planning to add more features like
+      completions, CTCP extension support, coloring of nicks
+      and conversations, better keybindings and UI, etc (see
+      the <a href="TODO">TODO</a> file for a longer list).
+    </p>
+    <p>Here's a screenshot of it running:</p>
+    <img src="Screenshot-Hircules.png" ALT="[screenshot (28kB)]" />
+    <h2>Releases</h2>
+    <p><b>2003-05-15</b> Hircules 0.1 released (first release)
+      <ul>
+      <li><a href="download/hircules-0.1.tar.gz">source tarball</a> [84kB]</li>
+      <li><a href="download/hircules-0.1-1.src.rpm">source rpm</a> [105kB] (includes lambdabot 1.0 source too)</li>
+      <li><a href="download/hircules-0.1-1.i386.rpm">i386 rpm</a> [556kB] (built on Red Hat Linux 9)</li>
+    </ul>
+    Features include:
+    <ul>
+      <li>tabs for channels and private dialogs</li>
+      <li>raw irc tab</li>
+      <li>all channel tab</li>
+      <li>lambdabot extension modules can be used, but most of them are disabled by default currently</li>
+    </ul>
+    Hopefully there will be a cvs repository up soon for better public access.
+    </p>
+
+    <h2>Building</h2>
+    <p>To build Hircules you need:
+      <ul>
+	<li><a href="http://haskell.org/ghc/">ghc</a>, the Glasgow Haskell Compiler (I'm using 5.04.3)</li>
+	<li><a href="gtk2hs.sourceforge.net/">gtk2hs</a>, a GTK 2 Binding for Haskell (you probably need cvs HEAD, alternatively you can download one of the following:)
+	<ul>
+	  <li><a href="download/gtk2hs-0.9.3.tar.gz">gtk2hs source</a> [399kB] (cvs snapshot with a few patches)</li>
+	  <li><a href="download/gtk2hs-0.9.3-2.20030515.src.rpm">gtk2hs srpm</a> [405kB]</li>
+	  <li><a href="download/gtk2hs-0.9.3-2.20030515.i386.rpm">gtk2hs i386 rpm</a> [1.6MB] (built with ghc-5.04.3 on Red Hat Linux 9)</li>
+	</ul>
+      </li>
+      <li><a href="http://prdownloads.sourceforge.net/haskell-libs/lambdabot-1.0.tar.gz">lambdabot</a> 1.0</li>
+    </ul>
+    </p>
+    <hr>
+    <address><a href="mailto:petersen@haskell.org">Jens Petersen</a></address>
+<!-- Created: Thu May  8 07:11:40 JST 2003 -->
+<!-- hhmts start -->
+Last modified: Thu May 15 16:51:14 JST 2003
+<!-- hhmts end -->
+  </body>
+</html>

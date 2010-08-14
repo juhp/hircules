@@ -1,0 +1,8 @@
+Version 0.1 (released 2003-05-14):
+
+* First public release
+- tabs for channels
+- tabs for private dialogs
+- "raw" channel tab
+- all channel tab
+- support for a few common irc commands

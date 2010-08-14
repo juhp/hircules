@@ -1,0 +1,23 @@
+* protocol/network
+- auto re-connect
+- CTCP
+- logging
+- irc urls (http://www.w3.org/Addressing/draft-mirashi-url-irc-01.txt)
+- realname configuration
+
+* UI
+- completion of nicks and commands
+- colour nicks
+- help
+- avoiding textbuffer when tabs clicked
+- visual message notification
+- track users in channels
+  - restrict quit messages to relevants channels
+- track topics
+- closing of tabs
+- freezing a channel (ie turning off auto-scrolling on output)
+- menubar
+- window title
+
+* other
+- extension modules' exceptions should be caught
