@@ -20,7 +20,6 @@
 module Hircules.Threads (killThreads, newThread, shutDown) where
 
 import Control.Concurrent
-import Control.Concurrent.MVar (MVar, newMVar)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Graphics.UI.Gtk (mainQuit)

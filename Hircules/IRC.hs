@@ -63,10 +63,9 @@ where
 --import Monad
 import Prelude hiding (catch)
 import Data.Maybe
-import GHC.IO
-import GHC.IOBase (Handle) -- , BufferMode(..))
+import System.IO (Handle, hGetLine)
 import Control.Concurrent
-import Control.Concurrent.Chan
+-- import Control.Concurrent.Chan
 import Control.OldException (catch)
 import Control.Monad.Reader
 import Control.Monad.State

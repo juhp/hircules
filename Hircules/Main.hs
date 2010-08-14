@@ -19,13 +19,13 @@ import Data.Char (isAlpha, isDigit, toLower, toUpper)
 import qualified Data.Map as Map
 import Data.Maybe
 import Data.Version (showVersion)
-import GHC.IOBase (BufferMode(..))
-import GHC.Handle
+--import GHC.Handle
 import Network (connectTo, withSocketsDo, PortID(..))
 -- import PosixProcEnv (getLoginName)
 import System.Console.GetOpt (getOpt, usageInfo, ArgDescr(..), OptDescr(..), ArgOrder(..))
 import System.Environment (getArgs, getEnv, getProgName)
 import System.Time (ClockTime(..), calendarTimeToString, toCalendarTime)
+import System.IO (BufferMode(..), IOMode(..), hSetBuffering, openFile)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Graphics.UI.Gtk (beep, mainGUI)
