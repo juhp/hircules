@@ -9,17 +9,13 @@
 
 module Hircules.Main where
 
--- import GHC.IO
 import Control.Concurrent
 import Control.Exception (bracket_)
---import Control.Monad.Trans
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Char (isAlpha, isDigit, toLower, toUpper)
 import qualified Data.Map as Map
-import Data.Maybe
 import Data.Version (showVersion)
---import GHC.Handle
 import Network (connectTo, withSocketsDo, PortID(..))
 -- import PosixProcEnv (getLoginName)
 import System.Console.GetOpt (getOpt, usageInfo, ArgDescr(..), OptDescr(..), ArgOrder(..))
@@ -34,8 +30,6 @@ import Hircules.CTCP
 import Hircules.Channel
 import Hircules.Config (configDir,logDir)
 import Debug.State
--- -- uncomment next line if your gtk2hs doesn't provide Gdk.beep
--- import Display
 import Hircules.Directories
 import Hircules.GUI
 import Hircules.IRC

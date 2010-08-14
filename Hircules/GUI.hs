@@ -35,22 +35,18 @@ module Hircules.GUI (addIRCchannel,
 where
 
 import Control.Concurrent
--- import Control.Exception
 import Control.Monad (when, unless)
 import Data.Char (isSpace, toLower)
 import Data.Map (empty)
--- import Data.Maybe (fromMaybe, fromJust, isJust)
--- import System.Exit
-import System.IO.Unsafe (unsafePerformIO)
+import Data.Time.Format (formatTime)
 import Data.Time.LocalTime (getZonedTime)
+import System.IO.Unsafe (unsafePerformIO)
+import System.Locale
 
 import Hircules.Channel
 import Debug.State
 import Hircules.EntryArea (setEditable)
-import Graphics.UI.Gtk hiding (afterPasteClipboard)
-import Graphics.UI.Gtk.Multiline.TextView(afterPasteClipboard)
-import Graphics.UI.Gtk.Gdk.Events
--- import Hierarchy (toContainer)
+import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Keymap
 import Control.Monad.MaybeDo
 import Hircules.Threads

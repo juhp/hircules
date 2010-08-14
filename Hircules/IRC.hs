@@ -60,13 +60,9 @@ module Hircules.IRC (IRC,
             MODULE(..))
 where
 
---import Monad
-import Prelude hiding (catch)
 import Data.Maybe
 import System.IO (Handle, hGetLine)
 import Control.Concurrent
--- import Control.Concurrent.Chan
-import Control.OldException (catch)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Char (toLower)
@@ -77,16 +73,10 @@ import Data.Dynamic
 import Data.IORef
 import System.Exit
 import System.IO (hClose, hIsEOF, hPutStrLn)
--- import System.IO.Unsafe (unsafePerformIO)
-import Data.Time.LocalTime (getZonedTime)
-
--- import Gtk (labelSetText, widgetShow)
 
 import Hircules.Channel
 -- import Hircules.Charset
--- import Config (logDir)
 import Debug.State
--- import Directories ((+/+))
 import Hircules.EntryArea (setNickText)
 import Hircules.GUI
 import Control.Monad.MaybeDo
