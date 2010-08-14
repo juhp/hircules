@@ -82,7 +82,7 @@ setupGUI :: IO ()
 setupGUI = do
   _ <- initGUI
   let window = mainwindow
-  windowSetDefaultSize window 496 382
+  windowSetDefaultSize window 640 512
   windowSetTitle window "Hircules IRC client"
   _ <- onDelete window (const $ shutDown >> return True)
   notebookSetScrollable book True
