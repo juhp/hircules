@@ -21,18 +21,21 @@ dnl ######################################################################
 
 
 dnl Initialise.
-AC_INIT(hircules, 0.1.1)
+AC_INIT(hircules, 0.2)
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR(Main.hs)
 RELEASE=1
 
 dnl Select a specific Haskell compiler and/or flags.
 AC_ARG_WITH(hc, 
-            [  --with-hc=HC            use Haskell compiler HC (full path required)],
+            [  --with-hc=HC            use Haskell compiler HC],
 	    [HC=$withval])
 AC_ARG_WITH(hcflags, 
             [  --with-hcflags=HCFLAGS  specify flags for Haskell compiler],
 	    [HCFLAGS=$withval])
+AC_ARG_WITH(lambdabot, 
+            [  --with-lambdabot=PATH  use lambdabot modules],
+	    [LAMBDABOT=$withval])
 
 dnl Checks for programs.
 AC_PROG_INSTALL
@@ -45,7 +48,7 @@ AC_EXEEXT
 
 dnl Haskell compiler
 dnl (The next command is not executed, if $HC is already set.)
-AC_PATH_PROG(HC, ghc, ghc-not-found)
+AC_PATH_PROG(HC, $HC ghc, ghc-not-found)
 if test $HC = ghc-not-found; then
  AC_MSG_ERROR([
 Could not find GHC!  This is currently the only supported compiler.
@@ -56,6 +59,7 @@ dnl Needed substitution.
 AC_SUBST(HCFLAGS)
 AC_SUBST(RELEASE)
 AC_SUBST(EXEEXT)
+AC_SUBST(LAMBDABOT)
 
 dnl write the results...
 AC_OUTPUT([

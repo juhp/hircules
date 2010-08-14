@@ -1,4 +1,240 @@
-2003-05-16  Jens Petersen  <petersen@redhat.com>
+2003-07-03  Jens Petersen  <petersen@haskell.org>
+
+	* configure.ac: Version 0.2.
+
+	* Makefile.am (LIBMODULES): Add Directories.hs and MaybeDo.hs.
+	(hircules_SOURCES): Replace LambdaBot.hs by LambdaBot.hsc.
+	(hircules$(EXEEXT)): Depend on LambdaBot.hs as well.
+
+	* IRC.hs (encodeMessage): Put composed function in parentheses.
+
+	* hircules.spec.in: Require and use ghc-5.04.3. Don't build debuginfo package.
+
+	* lib/MaybeDo.hs: New module, providing maybedo.
+
+	* LambdaBot.hsc: Contains lambdabot functions previously in Main.
+
+	* lib/WordString.hs (split): Function taken from lambdabot's Util.
+
+	* configure.ac: Bump version to 0.1.92.
+	--with-hc now doesn't need an absolute path to ghc.
+	--with-lambdabot to enable lamdbabot support.
+
+	* Makefile.am (LIBMODULES): Add Debug.hs and Display.hs.
+	(LAMBDABOT): Let configure set it.
+	(hircules_SOURCES): Add LambdaBot.hs.
+	(HCFLAGS): Only include lambdabot when configured.
+	(%.hs): Generic target from %.hsc.
+	(LambdaBot.hs): New target.
+
+	* Main.hs: Import Data.Char.toLower, Data.Maybe, Debug, Display
+	[temporary], Lambdabot and MaybeDo.  No longer import Util.
+	Lambdabot module imports moved to Lambdabot.
+	(Flag): Add Debug.
+	(options): Add debug option.
+	(help): Setup debugging.
+	(ircMain): liftIO getEnv.  installModules moved to Lambdabot.
+	(processReadMessage): Show message when debugging.  Add PART
+	and 353 handlers.
+	(doJOIN): Lowercase channel name.
+	(doQUIT): Only display quit message on relevant channels.  Remove
+	nick from user-channels maps.
+	(doPART): New function to handle part messages.  Try to hide
+	channel tab when we part channel.  Update user-channel maps
+	(doNICK): Update our nick if it is ours.  Display nick change on
+	relevant channels.
+	(doRPL_NAMREPLY): New handler to update user-channel maps, when
+	receiving names list.
+	(doDisplay): Show message and maybe channel name when debugging. 
+	(transform): Lowercase channel name.  Call transform'.
+	(transform'): Was transform.  Take the head of the middle for
+	topic channel.
+	(doPRIVMSG): Use botApology instead of ircPrivmsg.
+	(doPersonalMsg): Beep on private messages.
+	(doPublicMsg): Use botApology instead of ircPrivmsg.  Display in
+	alert channel and beep.
+	(processInput): Add '/' to input in virtual channel.  Use (+-+).
+	For join command, if we're already on channel then display it if
+	necessary, else send command if it is a public channel or make a
+	private channel tab.
+	(parseCmd): For empty join command put channel in middle not tail.
+	Handle empty names command.  Only do /me command for real channels.
+
+	* IRC.hs: Export displayIRCchannel, getUserChannels, joinChanUser,
+	partChanUser, removeUser, renameUser and setChanUsers.
+	No longer export memberChannel.  Import Data.Char.toLower, Debug,
+	and MaybeDo.
+	(IRCRWState): ircChannels is now a map from channel name to IRCChannel.
+	Added ircUsers, stores channels each user is one.
+	(msgUser): Remove any '~' before "user@host".
+	(setNick): Modify nick name atomically.
+	(getIRCChannel): ircChannels now just returns IRCChannel.
+	(getIRCChannels): Ditto.
+	(memberChannel): No longer needed.
+	(addChannel): Use getIRCChannel rather than memberChannel.  Lower
+	case of channel name.  Use modify rather than get and put. Call
+	joinChanUser.
+	(removeChannel): Use modify rather than get and put. Lowercase
+	channel name.
+	(runIRC): Initialise ircUsers.
+	(encodeMessage): No longer takes suffix.
+	(setChanUsers): New function to set all the users on a particular
+	channel and channels a user is on.  Used to update user-channels
+	lists when joining a channel or on receiving NAMES list.
+	(joinChanUser): New function to update user-channels when a user
+	joins a	channel.
+	(partChanUser): New function to update user-channels when a user
+	parts a channel.
+	(userInChan): New function to check if a user is on a particular
+	channel.
+	(getUserChannels): New function to list channels a user is on.
+	(addUserChan): New auxillary function to update user-channels map.
+	(removeUserChan): Ditto.
+	(removeUserChan): New auxillary function to remove user from
+	user-channels map.
+	(setUserChans): New auxillary function to update user's channels
+	in user-channel map.
+	(renameUser): Remap user when she changes nick.
+	(displayIRCchannel): Maybe popup the named channel tab.
+
+	* GUI.hs: Export alertchannel, displayChannelTab and hideIRCchannel.
+	Import Data.Char.toLower and Debug.
+	(IRCChannel): Add chanusers and chantopic fields.
+	(tabchannel): Remove.
+	(allchannel): Put "/" in nick label.
+	(rawchannel): Ditto.  Create with addIRCchannel.
+	(alertchannel): New virtual channel to alert one to personal messages.
+	(mainwidget): Renamed from mainWidget.
+	(setupGUI): Use mainwidget.  Remove afterSwitchPage switchPageHandler.
+	(globalKeyBindings): Add Ctrl-Shift-w binding to hide channel.
+	Remove F2 and F3 bindings.
+	(switchToTab): Don't need withCurrentChan.
+	(switchTo): Use mainwidget
+	(addIRCchannel): Move most of code to displayChannelTab and call it.
+	(displayChannelTab): New function to do display and numbered
+	labeling of channel tabs.
+	(newIRCchannel): Store the channel name in lowercase.  Initialise
+	chanusers and chantopic in result.
+	(hideCurrentChannel): New function to hide current channel tab.
+	(hideIRCchannel): New function to hide a channel tab, say when
+	parting it.
+	(doRemoveNthPage): New function to remove nth tab from notebook if
+	more than one.
+	(updateTabLabels): New function to update tab labels after
+	removing one.  Currently nop, but will be used to renumber the
+	labels.
+	(writeTextLn): Remove old getClockTime call.  Display channel if
+	it is hidden.
+	(sendLine): No longer takes real chan argument.  Now accepts all
+	input without question, since virtual chan's input now defaults to
+	command.
+
+	* lib/Display.hs: Temporary module Display, until Gdk.beep is in
+	gtk2hs.
+
+	* lib/Debug.hs: Debugging output module added.
+
+2003-06-01  Jens Petersen  <petersen@haskell.org>
+
+	* configure.ac: Bump version to 0.1.90.
+
+	* lib/WordString.hs: Added WordString library to handle Strings
+	of space-separated words.
+
+	* lib/Directories.hs: Added Directories library.
+
+	* Config.hs: New module to carry configuration variables.
+
+	* CTCP.hs: New module to handle ctcp quoting and unquoting.
+
+	* ANNOUNCE: New file carrying last release annoucement.
+
+	* Makefile.am (LIBMODULES): Add WordString.hs.
+	(hircules_SOURCES): Add CTCP.hs and Config.hs.
+
+	* Main.hs: Import getenv instead of getLoginName.  Import CTCP,
+	configDir, logDir, Directories and WordString.
+	(main'): Create configDir and logDir at startup if they doesn't exist.
+	(ircMain): Get the user name from USER environment variable,
+	rather than getLoginName, since the later wasn't working when not
+	run from a tty.
+	(doJOIN): Tail is now a WordString.
+	(doQUIT): Ditto.
+	(doERROR): Ditto.
+	(doNICK): Ditto.
+	(doRPL_WELCOME): Middle is now a WordString.
+	(doDisplay): Keep output text in var text, and log it.
+	(tranform): Now just takes user's nick and returns the output
+	string and irc channel.  Middle and tail are now WordString's.
+	Handle CTCP quoting in PRIVMSGs.  Display other users' email
+	addresses too when they join a channel.  Display MODE changes.
+	Use (+-+).
+	(formatCTCP): New function to handle ACTIONs.
+	(doPRIVMSG'): Move into doPRIVMSG.
+	(doPRIVMSG): Middle and tail are now WordString's.
+	Pass nick to doPersonalMsg and doPublicMsg.
+	(doPersonalMsg): Take nick as extra argument.  Middle is now a
+	WordString.  Specify the CTCP quote before PING.
+	(doPublicMsg): Take nick as extra argument.  Tail is now a
+	WordString.
+	(processInput): Define text and alltext to hold output for real
+	channel and allchannel.  Log alltext.  Send message with ircWrite.
+	(parseCmd): Middle and tail are now WordString's.
+	Support "/me" actions.  Remove startColon.
+
+	* IRC.hs: No longer export ircSend and removeLeadColon.
+	Export logMessage, msgUser and removeChannel.
+	Import hPutStrLn, logDir from Config, (+/+) from Directories and
+	WordString.
+	(IRCRState): Add ircLogFile.
+	(IRCMessage): Make msgMiddle and msgTail be String's.  Adjust Show
+	instance accordingly.
+	(msgUser): New function to extract "user@host" from IRCMessage.
+	(mkIrcMessage): Take String's for middle and tail.
+	(mkIrcMessageWithPrefix): Ditto.
+	(ircSignOn): Middle and tail are now String's.
+	(ircPrivmsg'): Ditto.
+	(ircTopic): Ditto.
+	(ircQuit): Ditto.
+	(ircJoin): Ditto.
+	(ircPart): Ditto.
+	(ircSend): Removed.
+	(runIRC): Open log file with LineBuffering, and put it in IRCRState.
+	(rawchannel): Moved to GUI.
+	(readerLoop'): Remove trailing newline.  Don't split input into words,
+	instead treat it as a WordString - middle and tail now String's.
+	(removeLeadColon): Removed.
+	(writerLoop'): Add carriage-return to hPutStrLn, not encmsg.
+	(encodeParams): Middle is now a String.
+	(encodeTail): Tail is now a String.
+	(decodeMessage): Message input now passed as a String and
+	processed as a WordString.  Use breakString to split middle and tail.
+	(startColon): Removed.
+	(ctcpQuote): Moved to CTCP.
+	(ctcpDequote): Ditto.
+	(logMessage): New function to log message to logfile.
+
+	* GUI.hs: Export newIRCchannel, rawchannel and timeStamp.
+	Import unless from Monad and toContainer from Hierarchy.
+	Add chanbox Container to IRCChannel datatype.
+	(rawchannel): New unsafe constant for the "raw" irc channel.
+	(MainWidget): New type alias to hold the main appl widget, eg notebook.
+	(toMainWidget): New function to cast widget to MainWidget.
+	(mainWidget): unsafe MVar to hold current MainWidget.
+	(mainwindow): unsafe constant to hold main window.
+	(setupGUI): Use mainwindow, and mainWidget
+	(globalKeyBindings): Add "F2" to switch to tabs, and "F3" to
+	switch to raw channel.
+	(switchToTab): Switch to notebook, if mainWidget is not.
+	(switchTo): New function to switch MainWidget.
+	(addIRCchannel): Code to generate IRCChannel moved to newIRCchannel.
+	Use it.
+	(newIRCchannel): Taken out of addIRCchannel.
+	Add chanbox to result.
+	(writeTextLn): Use timeStamp.  Place TextBuffer cursor at end.
+	(timeStamp): New function factored out of writeTextLn.
+
+2003-05-16  Jens Petersen  <petersen@haskell.org>
 
 	* configure.ac: Version 0.1
 

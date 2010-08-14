@@ -5,7 +5,7 @@
 ## Author : Jens Petersen <petersen@haskell.org>
 ## Created: 2003-05-14
 ##
-## Version $Revision: 1.1 $ from $Date: 2003/05/15 20:43:43 $
+## Version $Revision: 1.4 $ from $Date: 2003/07/03 21:30:47 $
 ##
 ## Copyright (c) 2003 Jens-Ulrik Holger Petersen
 ##
@@ -19,19 +19,28 @@
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ## General Public License for more details.
 
-LIBMODULES = GdkKeys.hs GtkKeymap.hs Threads.hs Version.hs.in
+LIBMODULES = Debug.hs Directories.hs Display.hs GdkKeys.hs GtkKeymap.hs MaybeDo.hs Threads.hs Version.hs.in WordString.hs
 PACKAGES = gtk2 net
-LAMBDABOT = lambdabot
+LAMBDABOT = @LAMBDABOT@
 
 bin_PROGRAMS = hircules
-hircules_SOURCES = Main.hs GUI.hs IRC.hs $(addprefix lib/,$(LIBMODULES))
+hircules_SOURCES = Main.hs GUI.hs IRC.hs CTCP.hs Config.hs LambdaBot.hsc $(addprefix lib/,$(LIBMODULES))
 EXTRA_DIST = index.html hircules.spec Screenshot-Hircules.png
 
-HCFLAGS = $(addprefix -package ,$(PACKAGES)) -ilib -i$(LAMBDABOT) -i$(LAMBDABOT)/EvalModule 
+HCFLAGS = $(addprefix -package ,$(PACKAGES)) -ilib
 
-hircules$(EXEEXT): $(hircules_SOURCES:.hs.in=.hs)
+#ifneq ($(LAMBDABOT), "")
+HCFLAGS += -i$(LAMBDABOT) -i$(LAMBDABOT)/EvalModule -DLAMBDABOT
+#endif
+
+hircules$(EXEEXT): $(hircules_SOURCES:.hs.in=.hs) LambdaBot.hs
 	$(HC) --make -o $@ $(HCFLAGS) Main.hs
 	strip $@
+
+%.hs: %.hsc
+	hsc2hs -DLAMBDABOT $<
+
+LambdaBot.hs: config.status
 
 ghci:
 	ghci -ilib $(HCFLAGS) $<

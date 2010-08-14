@@ -3,7 +3,7 @@
 --  Author : Jens-Ulrik Petersen
 --  Created: 15 July 2002
 --
---  Version:  $Revision: 1.6 $ from $Date: 2002/01/25 06:44:01 $
+--  Version:  $Revision: 1.2 $ from $Date: 2003/07/03 11:24:41 $
 --
 --  Copyright (c) 2002 Jens-Ulrik Holger Petersen
 --
@@ -27,6 +27,8 @@ import FiniteMap
 import MVar (newMVar, modifyMVar_, readMVar, MVar)
 
 import Events
+
+-- import Debug
 import GdkKeys
 
 type Keymap = MVar KeymapHash
@@ -44,7 +46,8 @@ newKeymap = newMVar emptyFM
 
 keymapAdd :: Keymap -> Keybinding -> IO ()
 keymapAdd keymap (KB mod name act) =
-    modifyMVar_ keymap $ \keyfm ->
+    modifyMVar_ keymap $ \keyfm -> do
+--       debug $ symsToInt mod
       return $ addToFM keyfm (name, symsToInt mod) act
   where
       symsToInt :: [ModSym] -> Modifier
@@ -56,8 +59,8 @@ keyPressCB keymap ev =
     keyfm <- readMVar keymap
     let mod = modif ev
 	keyname = keyvalName $ keyval ev
---     print mod
---     print keyname
+--     debug mod
+--     debug keyname
     case keyname of
 	 Just key ->
 	   case lookupFM keyfm (key, mod) of

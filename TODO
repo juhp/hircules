@@ -1,15 +1,17 @@
 * protocol/network
-- auto re-connect
+- auto re-connect (including lack of pings)
 - CTCP
-- logging
 - irc urls (http://www.w3.org/Addressing/draft-mirashi-url-irc-01.txt)
 - realname configuration
+- nick handovers
+- 8bit clean / UTF-8 / iconv?
+- handle newlines in input
 
 * UI
 - completion of nicks and commands
 - colour nicks
 - help
-- avoiding textbuffer when tabs clicked
+- avoid focusing textbuffers when tabs clicked
 - visual message notification
 - track users in channels
   - restrict quit messages to relevants channels
@@ -17,7 +19,19 @@
 - closing of tabs
 - freezing a channel (ie turning off auto-scrolling on output)
 - menubar
-- window title
+- do something with window title
+- input history
+- display "/msg #chan ..."  in channel buffer
+- drop server pings from raw channel
+- filtering by channel (eg don't show mode changes on #chan)
+- user control over what channels appear in a virtual channel
+  - virtual channel editting
+  - channel importance setting
+- display no topic in channel too
 
 * other
 - extension modules' exceptions should be caught
+- clean up thread termination when exiting
+- slave threads shouldn't just give up (on Prelude exceptions for example)
+- make lambdabot a build option
+- put date in logs

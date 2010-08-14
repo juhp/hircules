@@ -3,7 +3,7 @@
 --  Author : Jens-Ulrik Petersen
 --  Created: May 2003
 --
---  Version: $Revision: 1.4 $ from $Date: 2003/05/15 20:43:43 $
+--  Version: $Revision: 1.4 $ from $Date: 2003/07/03 21:30:46 $
 --
 --  Copyright (c) 2003 Jens-Ulrik Holger Petersen
 --
@@ -18,17 +18,24 @@
 --  General Public License for more details.
 
 module GUI (addIRCchannel,
-	    allchannel,
-	    chanI,
-	    setupGUI,
-	    writeTextLn,
-	    IRCChannel(..),
-	    Interactive)
+            alertchannel,
+            allchannel,
+            chanI,
+            displayChannelTab,
+            hideIRCchannel,
+            newIRCchannel,
+            rawchannel,
+            setupGUI,
+            timeStamp,
+            writeTextLn,
+            IRCChannel(..),
+            Interactive)
 where
 
 import Control.Concurrent
 import Control.Exception
-import Control.Monad (when)
+import Control.Monad (when, unless)
+import Data.Char (toLower)
 import Data.FiniteMap
 import Data.Maybe (fromMaybe, fromJust, isJust)
 import System.Exit
@@ -37,61 +44,66 @@ import System.Time
 import System.Locale
 
 import Gtk
+import Hierarchy (toContainer)
 import GtkKeymap
 import Threads
 
-data IRCChannel = IRCChan { chanbuffer :: TextBuffer
-			  , channame :: String
-			  , chanreal :: Bool
-			  , chanlabel :: Label
-			  , chanentry :: Entry
-			  , chanview :: TextView
-			  , chanend :: TextMark}
+import Debug
+-- import NotebookGetNPages
 
-tabchannel :: MVar (FiniteMap Int IRCChannel)
-tabchannel = unsafePerformIO $ newMVar emptyFM
+data IRCChannel = IRCChan { chanbuffer :: TextBuffer
+                          , channame :: String
+                          , chanreal :: Bool
+                          , chanbox :: Container
+                          , chanlabel :: Label
+                          , chanentry :: Entry
+                          , chanview :: TextView
+                          , chanend :: TextMark
+                          , chanusers :: [String]
+                          , chantopic :: String }
+
+-- tabchannel :: MVar (FiniteMap Int IRCChannel)
+-- tabchannel = unsafePerformIO $ newMVar emptyFM
 
 book :: Notebook
-book = unsafePerformIO $ notebookNew
+book = unsafePerformIO notebookNew
 
 allchannel :: IRCChannel
-allchannel = unsafePerformIO $ addIRCchannel "all" "" False
+allchannel = unsafePerformIO $ addIRCchannel "all" "/" False
+
+rawchannel :: IRCChannel
+rawchannel = unsafePerformIO $ addIRCchannel "raw" "/" False
+
+alertchannel :: IRCChannel
+alertchannel = unsafePerformIO $ addIRCchannel "alert" "/" False
+
+type MainWidget = Container
+
+toMainWidget :: ContainerClass a => a -> MainWidget
+toMainWidget = toContainer
+
+mainwidget :: MVar MainWidget
+mainwidget = unsafePerformIO $ newEmptyMVar
+
+mainwindow :: Window
+mainwindow = unsafePerformIO windowNew
 
 setupGUI :: IO ()
 setupGUI = do
   initGUI
-  window <- windowNew
+  let window = mainwindow
   windowSetDefaultSize window 600 500
   windowSetTitle window "Hircules IRC client"
   onDelete window (const $ shutDown >> return True)
---   pane <- vPanedNew
---   containerAdd window pane
-  afterSwitchPage book switchPageHandler
---   scrollwin <- scrolledWindowNew Nothing Nothing
---   scrolledWindowSetPolicy scrollwin PolicyAutomatic PolicyAutomatic 
---   view <- textViewNewWithBuffer (chanbuffer allchannel)
---   textViewSetWrapMode view WrapChar
---   textViewSetEditable view False
---   containerAdd scrollwin view
---   panedPack1 pane scrollwin True True
---   panedAdd2 pane book
-  containerAdd window book
+  let initwidget = book
+  putMVar mainwidget $ toMainWidget initwidget
+  containerAdd window initwidget
   widgetShowAll window
   keymap <- newKeymap
   mapM_ (keymapAdd keymap) globalKeyBindings
   onKeyPress window (keyPressCB keymap)
   timeoutAdd (yield >> return True) 10
   return ()
-  where
-  switchPageHandler :: Int -> IO ()
-  switchPageHandler n = withCurrentChan (\ c -> widgetGrabFocus $ chanentry c)
-
-withCurrentChan :: (IRCChannel -> IO ()) -> IO ()
-withCurrentChan act = do
-  page <- notebookGetCurrentPage book
-  fm <- readMVar tabchannel
-  let mchan = lookupFM fm page
-  maybe (return ()) act mchan
 
 
 globalKeyBindings :: [Keybinding]
@@ -106,17 +118,47 @@ globalKeyBindings =
     , KB [ModCtrl] "8" (switchToTab 7)
     , KB [ModCtrl] "9" (switchToTab 8)
     , KB [ModCtrl] "0" (switchToTab 9)
+    , KB [ModCtrl,ModShift] "W" hideCurrentChannel
     , KB [ModCtrl] "q" shutDown
     ]
   where
   switchToTab :: Int -> IO ()
-  switchToTab n = withCurrentChan (\ _ -> notebookSetCurrentPage book n)
-      
+  switchToTab n = do
+      bookon <- widgetIsAncestor mainwindow book 
+      unless bookon (switchTo book)
+      notebookSetCurrentPage book n
+  switchTo :: ContainerClass a => a -> IO ()
+  switchTo widget = do
+      displaying <- widgetIsAncestor mainwindow widget
+      unless displaying $ do
+        current <- takeMVar mainwidget
+        containerRemove mainwindow current
+        containerAdd mainwindow widget
+        putMVar mainwidget $ toMainWidget widget
 
 addIRCchannel :: String -> String -> Bool -> IO IRCChannel
 addIRCchannel title nick real = do
+  chan <- newIRCchannel title nick real
+  displayChannelTab True chan
+  widgetGrabFocus $ chanentry chan
+  return chan
+
+displayChannelTab :: Bool -> IRCChannel -> IO ()
+displayChannelTab switch chan = do
+  let mainbox = chanbox chan
+  pageno <- notebookPageNum book mainbox
+  page <- case pageno of
+             (Just p) -> return p
+             Nothing -> do
+                  n <- notebookGetNPages book
+                  notebookAppendPage book mainbox $ show (n + 1) ++ " " ++ (channame chan)
+                  return n
+  when switch $
+      notebookSetCurrentPage book page
+
+newIRCchannel :: String -> String -> Bool -> IO IRCChannel
+newIRCchannel title nick real = do
   mainbox <- vBoxNew False 5
-  notebookAppendPage book mainbox title
   scrollwin <- scrolledWindowNew Nothing Nothing
   scrolledWindowSetPolicy scrollwin PolicyAutomatic PolicyAutomatic 
   boxPackStart mainbox scrollwin PackGrow 0
@@ -133,42 +175,61 @@ addIRCchannel title nick real = do
   boxPackStart entrybox label PackNatural 0
   entry <- entryNew
   boxPackStart entrybox entry PackGrow 0
-  let result = IRCChan {chanbuffer = buffer, channame = title, chanreal = real, chanlabel = label, chanentry = entry, chanview = view, chanend = endmark}
-  onEntryActivate entry $ sendLine result real
+  let result = IRCChan {chanbuffer = buffer, channame = (map toLower title), chanreal = real, chanlabel = label, chanbox = toMainWidget mainbox, chanentry = entry, chanview = view, chanend = endmark, chanusers = [], chantopic = ""}
+  onEntryActivate entry $ sendLine result
   widgetShowAll mainbox
-  pageno <- notebookPageNum book mainbox
-  case pageno
-       of
-       (Just p) -> do
-		   notebookSetCurrentPage book p
-		   modifyMVar_ tabchannel (\ fm -> return $ addToFM fm p result)
-       Nothing -> return ()
-  widgetGrabFocus entry
   return result
 
--- removeIRCchannel :: IRCChannel -> IO ()
--- removeIRCchannel chan
+hideCurrentChannel :: IO ()
+hideCurrentChannel = do
+  notebookGetCurrentPage book >>= (doRemoveNthPage book)
+
+hideIRCchannel :: IRCChannel -> IO ()
+hideIRCchannel chan = do
+  total <- notebookGetNPages book
+  if total <= 1
+     then return ()
+     else do
+          let mainbox = chanbox chan
+          p <- notebookPageNum book mainbox
+          maybe (return ()) (doRemoveNthPage book) p
+
+doRemoveNthPage :: Notebook -> Int -> IO ()
+doRemoveNthPage book page = do
+  total <- notebookGetNPages book
+  if total <= 1
+     then return ()
+     else do
+          notebookRemovePage book page
+          updateTabLabels
+
+updateTabLabels :: IO ()
+updateTabLabels = return ()
 
 writeTextLn :: IRCChannel -> String -> IO ()
 writeTextLn chan str = do
   let buffer = chanbuffer chan
       endmark = chanend chan
   end <- textBufferGetIterAtMark buffer endmark
-  ct <- (getClockTime >>= toCalendarTime)
-  let time = formatCalendarTime defaultTimeLocale (timeFmt defaultTimeLocale) ct
+  time <- timeStamp
   textBufferInsert buffer end $ time ++ " " ++ str ++ "\n"
   textViewScrollMarkOnscreen (chanview chan) endmark
+  textBufferPlaceCursor buffer end
+  displayChannelTab False chan
 
--- signature is in IRC module
+timeStamp :: IO String
+timeStamp = do
+  ct <- (getClockTime >>= toCalendarTime)
+  return $ formatCalendarTime defaultTimeLocale (timeFmt defaultTimeLocale) ct
+
 type Interactive = (String, IRCChannel)
+-- signature is in IRC module
 chanI = unsafePerformIO newChan
 
-sendLine :: IRCChannel -> Bool -> IO ()
-sendLine chan real = do
+sendLine :: IRCChannel -> IO ()
+sendLine chan = do
   let entry = chanentry chan
   line <- entryGetText entry
-  case words line of
-       (c:ps) | (head c == '/') || real -> do
-	   entrySetText entry ""
-	   writeChan chanI (line, chan)
-       _ -> return ()
+  entrySetText entry ""
+  writeChan chanI (line, chan)
+
