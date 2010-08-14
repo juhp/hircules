@@ -3,7 +3,7 @@
 --  Author : Jens-Ulrik Petersen
 --  Created: May 2003
 --
---  Version: $Revision: 1.1.1.1 $ from $Date: 2003/05/15 22:17:50 $
+--  Version: $Revision: 1.2 $ from $Date: 2006/12/08 12:06:24 $
 --
 --  Copyright (c) 2003 Jens-Ulrik Holger Petersen
 --
@@ -23,7 +23,7 @@ import Control.Concurrent
 import Control.Concurrent.MVar (MVar, newMVar)
 import System.IO.Unsafe (unsafePerformIO)
 
-import Gtk (mainQuit)
+import Graphics.UI.Gtk (mainQuit)
 
 threads :: MVar [ThreadId]
 threads = unsafePerformIO $ newMVar []

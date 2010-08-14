@@ -5,7 +5,7 @@
 ## Author : Jens Petersen <petersen@haskell.org>
 ## Created: 2003-05-14
 ##
-## Version $Revision: 1.7 $ from $Date: 2003/10/05 08:16:34 $
+## Version $Revision: 1.9 $ from $Date: 2006/12/08 12:06:16 $
 ##
 ## Copyright (c) 2003 Jens-Ulrik Holger Petersen
 ##
@@ -19,8 +19,8 @@
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ## General Public License for more details.
 
-LIBMODULES = Charset.hs Debug.hs Directories.hs Display.hs GdkKeys.hs GtkKeymap.hs Iconv.hs MaybeDo.hs TextBufferCreateTag.hs Threads.hs UTF8.hs Version.hs.in WordString.hs
-PACKAGES = gtk2 network
+LIBMODULES = Charset.hs Debug.hs Directories.hs Display.hs GdkKeys.hs GtkKeymap.hs Iconv.hs MaybeDo.hs QuickSort.hs TextBufferCreateTag.hs Threads.hs UTF8.hs Version.hs.in WordString.hs
+PACKAGES = gtk
 LAMBDABOT = @LAMBDABOT@
 HIRCSUBDIRS = lib $(LAMBDABOT) $(wildcard $(LAMBDABOT)/*Module)
 

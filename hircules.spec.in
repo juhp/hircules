@@ -2,8 +2,6 @@
 #
 # Copyright 2003 Jens-Ulrik Petersen <petersen@haskell.org>
 
-%define ghc_ver 6.0.1
-
 Name: @PACKAGE@
 Summary: A IRC client in Haskell
 Version: @VERSION@
@@ -15,7 +13,7 @@ Source: http://haskell.org/hircules/src/%{name}-%{version}.tar.gz
 URL: http://haskell.org/hircules/
 Packager: Jens Petersen <petersen@haskell.org>
 BuildRoot: %{_tmppath}/%{name}-%{version}-root
-BuildRequires: ghc5 gtk2hs-ghc%{ghc_ver}
+BuildRequires: ghc ghc-gtk2hs
 Requires: gtk2
 
 %description
@@ -31,7 +29,7 @@ The IRC library is based on lambdabot.
 #%%setup -q -a1
 
 %build
-./configure --prefix=%{_prefix} --with-hc=ghc-%{ghc_ver} # --with-lambdabot=lambdabot
+./configure --prefix=%{_prefix} --with-lambdabot=lambdabot
 make
 
 %install

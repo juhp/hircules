@@ -1,6 +1,24 @@
+2008-11-03  Jens Petersen  <petersen@haskell.org>
+
+	- Data.Map replaces Data.FiniteMap in ghc68
+
+2006-12-08  Jens Petersen  <petersen@haskell.org>
+
+	- patch from Axel Simon with fixes for ghc64 merged
+
+	- add channel search of highlight with C-s and C-r
+
+	- loads of other fixes and improvements from long ago
+
 2003-10-05  Jens Petersen  <petersen@haskell.org>
 
 	* configure.ac: Version 0.3.
+
+	* lib/GtkKeymap.hs (keymapAdd): Bind to modi instead of mod.
+	(keyPressCB): Ditto.
+
+	* hircules.spec.in: Build with ghc-6.0.1 and without lambdabot
+	support for now.
 
 	* lib/WordString.hs (wtail): No redundant binding to first.
 	(wnth): Return empty string if over range.
@@ -11,7 +29,7 @@
 	* lib/Debug.hs (debug): Take a string label.
 
 	* lib/Charset.hs (encodeCharset): Maybe takes a charset.  When
-	charset given transcode to it from utf-8 , otherwise just encodeUTF8. 
+	charset given transcode to it from utf-8 , otherwise just encodeUTF8.
 	(word8ToChar): Define at toplevel.
 	(charToWord8): Ditto.
 
@@ -19,7 +37,7 @@
 
 	* Makefile.am (LIBMODULES): Add TextBufferCreateTag.hs.
 	(PACKAGES): net is now called network in ghc-6.0.1.
-	(hircules_SOURCES): Add EntryArea.hs.
+	(hircules_SOURCES): Add Channel.hs and EntryArea.hs.
 	(HCFLAGS): Add -Wall.
 	(hircules$(EXEEXT)): Drop -W and don't strip.
 	(ghci): Run versioned ghci.
@@ -34,7 +52,7 @@
 	(doNICK): Write to Channel not IRCChannel.
 	(doTOPIC): Use ircDisplayAlert.
 	(doDisplay): Use ircDisplayAll.  ircDisplay takes Channel now.
-	(transform): transform now returns highlight Bool too.  
+	(transform): transform now returns highlight Bool too.
 	(transform'): Add appropriate highlighting booleans to cases.
 	Use rest instead of all.
 	(formatCTCP): Drop redundant user arg.
@@ -102,8 +120,8 @@
 2003-09-12  Jens Petersen  <petersen@haskell.org>
 
 	* GUI.hs: IRCChannel moved to Channel module.  Export writeTextRaw.
-	Import Channel, Debug, EntryArea.setEditable.  Hide Event when 
-	importing Gtk.	Import WordString, TextBufferCreateTag, 
+	Import Channel, Debug, EntryArea.setEditable.  Hide Event when
+	importing Gtk.	Import WordString, TextBufferCreateTag,
 	TextView.afterPasteClipboard.
 	(allchannel): Prepend "%" to name.
 	(rawchannel): Ditto.
@@ -144,7 +162,7 @@
 	(updateTabN): New function.  Unhighlights selected tab title.
 
 	* lib/TextBufferCreateTag.hs: New module.
-	(textBufferCreateTagBool): Special case binding of varadic 
+	(textBufferCreateTagBool): Special case binding of varadic
 	gtk_text_buffer_create_tag for tag's with boolean properties.
 
 	* EntryArea.hs: New module.
@@ -207,7 +225,7 @@
 2003-07-07  Jens Petersen  <petersen@haskell.org>
 
 	* lib/UTF8.hs: New module, provides decodeUTF8 and encodeUTF8.
-	Original by Hallgren.  
+	Original by Hallgren.
 
 	* configure.ac: Bump version to 0.2.50.
 	(lambdabot): Fix --with-lambdabot option so that LAMBDABOT
@@ -271,7 +289,7 @@
 	relevant channels.
 	(doRPL_NAMREPLY): New handler to update user-channel maps, when
 	receiving names list.
-	(doDisplay): Show message and maybe channel name when debugging. 
+	(doDisplay): Show message and maybe channel name when debugging.
 	(transform): Lowercase channel name.  Call transform'.
 	(transform'): Was transform.  Take the head of the middle for
 	topic channel.
@@ -473,7 +491,7 @@
 	* Version.hs: Moved to "lib/Version.hs.in".
 
 	* Threads.hs: Moved to "lib/".
-	
+
 	* Main.hs: Disable most of the lambdabot extension modules for
 	now.
 	(myuserinfo): In here for now, until user configuration done.
@@ -487,7 +505,7 @@
 	(doRPL_WELCOME): Disable autojoins for now.
 	(parseCmd): Fix "/topic" with no args to send channel name in tail.
 	"/quit" uses versionString.
-	
+
 	* IRC.hs (ircnick): Lambdabot compatibility function.
 	(ircSignOn): Sign on with name in tail not middle.
 	(runIRC): Now just takes one string argument "host:port". Parse
@@ -533,4 +551,3 @@
 	(globalKeyBindings): Change default modifier from mod4 to Ctrl.
 	(addIRCchannel): Add argument nick, and use to for new Label in
 	front of entry box.
-

@@ -7,7 +7,7 @@
 --  Author : Jens Petersen
 --  Created: 24 May 2002
 --
---  Version $Revision: 1.2 $ from $Date: 2003/07/17 07:43:41 $
+--  Version $Revision: 1.3 $ from $Date: 2006/12/08 12:06:23 $
 --
 --  Copyright (c) 2002 Jens Petersen
 --
@@ -37,9 +37,9 @@ module GdkKeys(
   keyvalFromName
   ) where
 
-import FFI
-import LocalData(unsafePerformIO)
-
+-- import FFI
+import Foreign
+import Foreign.C.String
 
 
 keyvalName :: Integer -> Maybe String
@@ -61,8 +61,8 @@ keyvalFromName a1 =
   return (res')
 
 
-foreign import ccall "gdk_keyval_name"
+foreign import ccall unsafe "gdk_keyval_name"
   keyvalName'_ :: (CUInt -> (Ptr CChar))
 
-foreign import ccall "gdk_keyval_from_name"
+foreign import ccall unsafe "gdk_keyval_from_name"
   keyvalFromName'_ :: ((Ptr CChar) -> CUInt)

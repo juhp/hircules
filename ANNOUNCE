@@ -1,3 +1,47 @@
+From: Jens Petersen <petersen@haskell.org>
+To: haskell@haskell.org, hircules-users@lists.sourceforge.net
+Cc: gtk2hs-users@lists.sourceforge.net
+Subject: [Gtk2hs-users] Announce: hircules IRC client 0.3 released
+Date: Sun, 05 Oct 2003 22:08:16 +0900
+
+It's a pleasure to announce the release of Hircules 0.3.
+
+Hircules is an IRC client written in Haskell, using gtk2hs
+for its gui.  Since the last release about 3 months ago,
+various bugs have been fixed and a good number of new
+features added, including better charset support and tab
+highlighting.  A summary of the main changes is appended
+below.
+
+See the Hircules webpage <http://haskell.org/hircules/> for
+more details.  A source tarball and an i386 rpm built for Linux
+with glibc-2.3 and gtk2-2.2 are available for download from
+the project site page <http://sourceforge.net/project/showfiles.php?group_id=81211>.
+
+Enjoy,
+
+Jens
+
+Version 0.3 (2003-10-05):
+* New features
+- input area is now at the bottom of the channel buffer, not a Entry box
+- UTF-8 support
+- highlighting of tabs for channel activity
+- multiline input is support now (from text pasted into input area)
+- exceptions from lambdabot modules are now caught
+- absolute paths are no longer mistaken for irc commands
+- leading '/' is optional now in virtual channels
+- topic changes appear in Alert channel now
+- autodecoding of ISO-2022
+- tabs menu setup now
+- virtual channels now have '%' in front of them and can be "joined"
+- irc log is now date-stamped as well
+- the charset encoding for writing to a channel can now be set and shown
+  with the new "/coding" command
+- improved lambdabot configure support
+
+
+
 Subject: Announce: hircules 0.2 released
 From: Jens Petersen <petersen@haskell.org>
 To: haskell@haskell.org, hircules-users@lists.sourceforge.net

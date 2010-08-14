@@ -1,7 +1,7 @@
 module Channel (Channel, IRCChannel(..))
 where
-
-import Gtk
+import Data.Map (Map)
+import Graphics.UI.Gtk (Container, TextBuffer, TextMark, TextView)
 
 type Channel = String
 
@@ -13,6 +13,6 @@ data IRCChannel = IRCChan { chanbuffer :: TextBuffer
                           , channick :: TextMark
                           , chanentry :: TextMark
                           , chanview :: TextView
-                          , chanusers :: [String]
+                          , chanusers :: Map String Bool -- (nick,op)
                           , chantopic :: String
                           , chancoding :: Maybe String}

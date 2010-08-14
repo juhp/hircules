@@ -1,8 +1,8 @@
-module Debug (debug, setDebug)
+module Debug (debug, debugDo, setDebug)
 where
 
-import IOExts (unsafePerformIO)
-import MVar (newMVar, swapMVar, readMVar, MVar)
+import Foreign (unsafePerformIO)
+import Control.Concurrent.MVar (newMVar, swapMVar, readMVar, MVar)
 import Monad (when)
 import Control.Monad.Trans (liftIO, MonadIO)
 
@@ -20,3 +20,8 @@ debug txt v =
     when dbg $
       liftIO $ do
           putStrLn $ txt ++ ": " ++ show v
+
+debugDo :: MonadIO m => m () -> m ()
+debugDo act = do
+    dbg <- liftIO $ readMVar debugging
+    when dbg act

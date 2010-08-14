@@ -3,7 +3,7 @@
 --  Author : Jens-Ulrik Petersen
 --  Created: 15 July 2002
 --
---  Version:  $Revision: 1.3 $ from $Date: 2003/10/05 12:13:42 $
+--  Version:  $Revision: 1.6 $ from $Date: 2008/11/03 03:14:11 $
 --
 --  Copyright (c) 2002 Jens-Ulrik Holger Petersen
 --
@@ -20,51 +20,48 @@
 -- Description
 --
 
-module GtkKeymap (keymapAdd, keyPressCB, newKeymap,
-    Keymap, Keybinding(..), ModSym(..))
+module GtkKeymap (keymapAdd, keyPressCB, newKeymap, Keymap, Keybinding(..))
 where
-import FiniteMap
-import MVar (newMVar, modifyMVar_, readMVar, MVar)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Control.Concurrent.MVar (newMVar, modifyMVar_, readMVar, MVar)
 
-import Events
+import Graphics.UI.Gtk.Gdk.Events
 
 -- import Debug
-import GdkKeys
+-- import GdkKeys
 
 type Keymap = MVar KeymapHash
 
-type KeymapHash = FiniteMap (String, Modifier) (IO ())
+type KeymapHash = Map (String, Int) (IO ())
 
-data Keybinding = KB [ModSym] String (IO ())
+data Keybinding = KB [Modifier] String (IO ())
 
--- need to map meta, alt, hyper, super, et al
-data ModSym = ModShift | ModLock | ModCtrl | Mod1 | Mod2 | Mod3 | Mod4 | Mod5
-  deriving Enum
+-- -- need to map meta, alt, hyper, super, et al
+-- data ModSym = ModShift | ModLock | ModCtrl | Mod1 | Mod2 | Mod3 | Mod4 | Mod5
+--   deriving Enum
 
 newKeymap :: IO Keymap
-newKeymap = newMVar emptyFM
+newKeymap = newMVar Map.empty
 
 keymapAdd :: Keymap -> Keybinding -> IO ()
 keymapAdd keymap (KB modi name act) =
     modifyMVar_ keymap $ \keyfm -> do
 --       debug $ symsToInt modi
-      return $ addToFM keyfm (name, symsToInt modi) act
-  where
-      symsToInt :: [ModSym] -> Modifier
-      symsToInt ss = foldl (+) 0 $ map (\s -> 2^(fromEnum s)) ss
+      let bitmap = sum $ map fromEnum modi
+      return $ Map.insert (name, bitmap) act keyfm
+--   where
+--       symsToInt :: [ModSym] -> Modifier
+--       symsToInt ss = foldl (+) 0 $ map (\s -> 2^(fromEnum s)) ss
 
 keyPressCB :: Keymap -> Event -> IO Bool
-keyPressCB keymap ev =
+keyPressCB keymap Key { eventKeyName = keyName,
+			eventModifier = modi } =
     do
     keyfm <- readMVar keymap
-    let modi = modif ev
-	keyname = keyvalName $ keyval ev
---     debug modi
---     debug "keyCB"keyname
-    case keyname of
-	 Just key ->
-	   case lookupFM keyfm (key, modi) of
-		Just act -> do act
-		               return True
+    let bitmap = sum $ map fromEnum modi
+    case Map.lookup (keyName, bitmap) keyfm of
+		Just act -> act >> return True
 		Nothing -> return False
-	 Nothing -> return False
+keyPressCB _ _ = return False
+

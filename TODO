@@ -8,14 +8,17 @@
 - restrict /join nick to nicks that exist
 - /nick existingnick, shouldn't change nick to currentnick_
 - connections to multiple servers
-- throttle multiline writes to server to avoid getting kicked for flooding 
+- throttle multiline writes to server to avoid flooding and getting kicked
+- respond to VERSION queries
+- auto un-away
 
 * UI
 - completion of nicks and commands
+- channel colouring in %all
 - colour nicks
 - help
-- track topics
-- closing of tabs
+- topic history
+  - show old topic when it has changed
 - menubar
 - do something with window title
 - input history
@@ -25,16 +28,35 @@
 - user control over what channels appear in a virtual channel
   - virtual channel editting
   - channel importance setting
-- display no topic in channel too
-- display change of date in channels and log
-- searching/grepping of channel buffers
-- reply by pressing enter on a message
-- get rid of horizontal scrollbar (gtk bug?)
-- entry history
-- yanking of dialog into entryarea
+- display change of date in channels (and log)
+- grepping of channel buffers
+- reply by pressing enter on a message (yanking of dialog into entryarea)
 - pasted uneditable text into entryarea remains uneditable
+- toggle between %all and channel tabs?
+- Button-2 should append to input always
+- quit messages should appear in private channels too
+- improve search to be isearch
+- jump to url
+- keybinding to mark current word(s)
+- keybinding to yank nick on current line to input
+- improve C-u and C-a behaviour
+- get /ping, /whois, etc responses to appear in chan instead of just %all
+- away visualization for self and others
+  - change nick colour when away
+  - display %all away 301 messages correctly
+- don't scroll to cursor on input (eg while scrolling through channel with cursor at top say)
+- mouse pasting should work anywhere
+- select/paste cursor behaviour akward
+- /query as an alias for "/join nick"
+- add standard irc and xchat commands
+- /msg nick <lines of text> should all go to nick, not just the first line
+- sort /names by alphanumeric only (ie ignore punctuation)
+- iiimf support
+- coding-system abbreviations (eg "/coding jp"?)
+- draft msg editor
+- stopping auto-switching to private conversations
+- deal with long whitespace gracefully (gtk bug really)
 
 * other
 - clean up thread termination when exiting
 - slave threads shouldn't just give up (on Prelude exceptions for example)
-- put date in logs

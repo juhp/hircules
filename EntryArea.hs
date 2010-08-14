@@ -2,7 +2,8 @@ module EntryArea
 where
 
 import Channel
-import Gtk
+import Debug
+import Graphics.UI.Gtk
 
 setEditable :: IRCChannel -> IO ()
 setEditable chan = do
@@ -16,10 +17,15 @@ setNickText :: IRCChannel -> String -> IO ()
 setNickText chan nick = do
   let endm = channick chan
   start <- getNickStart
+  debug "setNickText" "1"
   end <- textBufferGetIterAtMark buffer endm
+  debug "setNickText" "2"
   textBufferDelete buffer start end
+  debug "setNickText" "3"
   begin <- getNickStart
+  debug "setNickText" "4"
   textBufferInsert buffer begin nick
+  debug "setNickText" "5"
   where
   endc = chanend chan
   buffer = chanbuffer chan

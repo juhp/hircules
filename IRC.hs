@@ -1,38 +1,38 @@
+{-# OPTIONS_GHC -fglasgow-exts #-}
+
 --  IRC.hs: an Internet Relay Chat library
 --
---  Version: $Revision: 1.7 $ from $Date: 2003/10/05 03:52:21 $
+--  Version: $Revision: 1.9 $ from $Date: 2008/11/03 03:14:11 $
 --
 --  Copyright (c) 2003 Andrew J. Bromage
---  Copyright (c) 2003 Jens-Ulrik Holger Petersen
+--  Copyright (c) 2003, 2004 and 2006 Jens-Ulrik Holger Petersen
 --
 --  See the "COPYING" file for license information.
 
 module IRC (IRC,
             IRCMessage(..),
-            IRCRWState,
+            IRCRState(..),
+            IRCRWState(..),
+            addChanUsers,
             addChannel,
             checkPrivs,
             displayIRCchannel,
+            getChannels,
             getIRCChannel,
-            getIRCChannels,
             getNick,
             getUserChannels,
-            ircCommands,
-            ircChannels,
             ircDisplay,
             ircDisplayAlert,
             ircDisplayAll,
             ircInput,
             ircInstallModule,
             ircJoin,
-            ircModules,
-            ircModuleState,
             ircPart,
             ircPrivmsg,
             ircRead,
-            ircReadChan,
             ircReady,
             {-ircSend,-}
+            ircSetNick,
             ircSignOn,
             ircTopic,
             ircQuit,
@@ -47,37 +47,36 @@ module IRC (IRC,
             mkIrcMessage,
             mkIrcMessageWithPrefix,
             partChanUser,
+            readerLoop,
             removeChannel,
             removeUser,
             renameUser,
-            runIRC,
-            setChanUsers,
             setChannelCoding,
             setNick,
             stripMS,
+            writerLoop,
             Module(..),
             ModuleState(..),
             MODULE(..))
 where
 
-import Network (connectTo, withSocketsDo, PortID(..))
 import Monad
 import Maybe
 import GHC.IO
-import GHC.IOBase (Handle, BufferMode(..))
-import GHC.Handle
-import Control.Exception
+import GHC.IOBase (Handle) -- , BufferMode(..))
 import Control.Concurrent
 import Control.Concurrent.Chan
+import Control.Exception (try)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Char (toLower)
 import Data.List
-import Data.FiniteMap
+import Data.Map (Map)
+import qualified Data.Map as Map
 import Data.Dynamic
 import Data.IORef
 import System.Exit
-import System.IO (hPutStrLn)
+import System.IO (hClose, hIsEOF, hPutStrLn)
 -- import System.IO.Unsafe (unsafePerformIO)
 import System.Locale
 import System.Time
@@ -86,34 +85,54 @@ import System.Time
 
 import Channel
 import Charset
-import Config (logDir)
+-- import Config (logDir)
 import Debug
-import Directories ((+/+))
+-- import Directories ((+/+))
 import EntryArea (setNickText)
 import GUI
 import MaybeDo
-import Threads
+-- import Threads
+import UTF8 (encodeUTF8)
 import WordString
 
 data IRCRState
-  = IRCRState { ircServer      :: String
-              , ircReadChan    :: Chan IRCMessage
-              , ircReadThread  :: ThreadId
-              , ircWriteChan   :: Chan IRCMessage
-              , ircWriteThread :: ThreadId
-              ,	ircSocket      :: Handle
-              ,	ircLogFile     :: Handle
-              }
+  = IRCRState ()
+
+type ChannelList = Map String IRCChannel -- name chan
 
 data IRCRWState
-  = IRCRWState { ircPrivilegedUsers :: FiniteMap String Bool
-	       , ircChannels        :: FiniteMap String IRCChannel -- name chan
+  = IRCRWState { ircServer      :: String
+               , ircReadChan    :: Chan IRCMessage
+               , ircReadThread  :: ThreadId
+               , ircWriteChan   :: Chan IRCMessage
+               , ircWriteThread :: ThreadId
+               , ircSocket      :: Handle
+               , ircLogFile     :: Handle
+               , ircPrivilegedUsers :: Map String Bool
+	       , ircChannels        :: ChannelList
 	       , ircNick            :: String
-	       , ircModules         :: FiniteMap String MODULE
-	       , ircCommands        :: FiniteMap String MODULE
-	       , ircModuleState     :: FiniteMap String (IORef ModuleState)
-	       , ircUsers           :: FiniteMap String [String] -- nick chans
+	       , ircModules         :: Map String MODULE
+	       , ircCommands        :: Map String MODULE
+	       , ircModuleState     :: Map String (IORef ModuleState)
+	       , ircUsers           :: Map String [String] -- nick chans
 	       }
+
+-- data IRCServer
+--   = IRCServer { ircServer      :: String
+--               , ircReadChan    :: Chan IRCMessage
+--               , ircReadThread  :: ThreadId
+--               , ircWriteChan   :: Chan IRCMessage
+--               , ircWriteThread :: ThreadId
+--               , ircSocket      :: Handle
+--               , ircLogFile     :: Handle
+--               , ircPrivilegedUsers :: Map String Bool
+-- 	      , ircChannels        :: ChannelList
+-- 	      , ircNick            :: String
+-- 	      , ircModules         :: Map String MODULE
+-- 	      , ircCommands        :: Map String MODULE
+-- 	      , ircModuleState     :: Map String (IORef ModuleState)
+-- 	      , ircUsers           :: Map String [String] -- nick chans
+-- 	      }
 
 data IRCMessage
   = IRCMessage {
@@ -147,7 +166,7 @@ msgUser msg =
 ircnick :: IRCMessage -> String
 ircnick = msgNick
 
-data ModuleState = forall a. (Typeable a) => ModuleState a
+data ModuleState = forall a. Typeable a => ModuleState a
 
 type IRC a = StateT IRCRWState (ReaderT IRCRState IO) a
 
@@ -170,24 +189,32 @@ setNick name = do
 
 ircSignOn :: String -> String -> IRC ()
 ircSignOn nick name
-  = do  server <- asks ircServer
+  = do  server <- gets ircServer
         ircWrite (mkIrcMessage "USER" (nick +-+ "localhost" +-+ server) name)
         ircWrite (mkIrcMessage "NICK" nick "")
+
+ircSetNick :: String -> IRC ()
+ircSetNick nick = ircWrite (mkIrcMessage "NICK" nick "")
 
 -- ircGetChannels :: IRC [String]
 -- ircGetChannels
 --   = do  chans <- gets ircChannels
---         return (keysFM chans)
+--         return (Map.keys chans)
 
 getIRCChannel :: String -> IRC (Maybe IRCChannel)
 getIRCChannel name = do
     chans <- gets ircChannels
-    return $ lookupFM chans (map toLower name)
+    return $ Map.lookup (map toLower name) chans
+
+getChannels :: IRC [Channel]
+getChannels = do
+    chans <- gets ircChannels
+    return $ Map.keys chans
 
 getIRCChannels :: IRC [IRCChannel]
 getIRCChannels = do
     chans <- gets ircChannels
-    return $ eltsFM chans
+    return $ Map.elems chans
 
 -- memberChannel :: String -> IRC Bool
 -- memberChannel name = do
@@ -197,16 +224,18 @@ getIRCChannels = do
 addChannel :: String -> Bool -> IRC ()
 addChannel name real = do
     mchan <- getIRCChannel name
-    when (isNothing mchan) $ do
-      let lname = map toLower name
-      nick <- getNick
-      chan <- liftIO $ addIRCchannel lname nick real
-      modify (\ s -> s { ircChannels = addToFM (ircChannels s) lname chan })
-      joinChanUser nick name
+    case mchan of
+      Just chan -> liftIO $ displayChannelTab True chan
+      Nothing -> do
+        let lname = map toLower name
+        nick <- getNick
+        chan <- liftIO $ addIRCchannel lname nick real
+        modify (\ s -> s { ircChannels = Map.insert lname chan (ircChannels s) })
+        joinChanUser nick name
 
 removeChannel :: String -> IRC ()
 removeChannel name = do
-    modify (\ s -> s {ircChannels = delFromFM (ircChannels s) (map toLower name)})
+    modify (\ s -> s {ircChannels = Map.delete (map toLower name) (ircChannels s)})
 
 ircPrivmsg :: String -> String -> IRC ()
 ircPrivmsg who msg = do
@@ -239,19 +268,19 @@ ircReady chan =
 
 ircRead :: IRC IRCMessage
 ircRead = do
-    chanR <- asks ircReadChan
+    chanR <- gets ircReadChan
     liftIO (readChan chanR)
 
 ircWrite :: IRCMessage -> IRC ()
 ircWrite msg = do
-    s <- ask
+    s <- get
     liftIO $ writeChan (ircWriteChan s) msg
 
 ircWriteEnc :: Channel -> IRCMessage -> IRC ()
 ircWriteEnc ch msg = do
-    s <- ask
+    s <- get
     chan <- getIRCChannel ch
-    liftIO $ maybeDo chan $ \ chn -> writeChan (ircWriteChan s) (encodeMsg $ chancoding chn)
+    liftIO $ maybeDo_ chan $ \ chn -> writeChan (ircWriteChan s) (encodeMsg $ chancoding chn)
     where
     mid = msgMiddle msg
     tale = msgTail msg
@@ -264,7 +293,7 @@ ircInput = liftIO (readChan chanI)
 
 -- ircSend :: IRCMessage -> IRC ()
 -- ircSend line
---   = do  h <- asks ircSocket
+--   = do  h <- gets ircSocket
 --         liftIO $ hPutStrLn h $ line ++ "\r"
 -- 	ircDisplay rawchannel $ "i " ++ line
 -- 	logMessage line
@@ -274,57 +303,13 @@ ircInput = liftIO (readChan chanI)
 ircDisplay :: Channel -> Bool -> String -> IRC ()
 ircDisplay ch alert str = do
     chan <- getIRCChannel ch
-    liftIO $ maybeDo chan (\ chn -> writeTextLn chn alert str)
+    liftIO $ maybeDo_ chan (\ chn -> writeTextLn chn alert str)
 
 ircDisplayAll :: String -> IRC ()
 ircDisplayAll str = liftIO $ writeTextLn allchannel False str
 
 ircDisplayAlert :: Bool -> String -> IRC ()
 ircDisplayAlert alert str = liftIO $ writeTextLn alertchannel alert str
-
-runIRC :: Maybe String -> (IRC ()) -> IO ()
-runIRC mserver m =
-    try runIrc' >>= \exc ->
-        case exc of
-            Left exception -> putStrLn ("Exception: " ++ show exception)
-            Right result   -> return result
-  where
-  runIrc' :: IO ()
-  runIrc' = withSocketsDo $ do
-        s <- liftIO (connectTo hostname (PortNumber portnum))
-        hSetBuffering s NoBuffering
-        threadmain <- myThreadId
-        chanR <- newChan
-        chanW <- newChan
-        threadr <- newThread (readerLoop threadmain chanR chanW s)
-        threadw <- newThread (writerLoop threadmain chanW s)
-	h <- liftIO $ openFile (logDir +/+ hostname) AppendMode
-	hSetBuffering h LineBuffering
-        let chans = IRCRState { ircServer      = hostname
-                              , ircReadChan    = chanR
-                              , ircReadThread  = threadr
-                              , ircWriteChan   = chanW
-                              , ircWriteThread = threadw
-                              , ircSocket      = s
-                              , ircLogFile     = h
-			      }
-        bracket_ (return ()) (killThread threadr >> killThread threadw)
-		     (runReaderT (evalStateT m initState) chans)
-  (hostname,port') = break (== ':') $ fromJust mserver
-  port = if null port' then "6667" else tail port'
-  portnum = fromIntegral (read port :: Integer)
-  initChans = listToFM [("%all",allchannel),
-                        ("%raw",rawchannel),
-                        ("%raw",rawchannel)]
-  initState =
-	    IRCRWState { ircPrivilegedUsers = listToFM [ (user,True) | user <- [] ]
-		       , ircChannels = initChans
-		       , ircNick = ""
-		       , ircModules = emptyFM
-		       , ircCommands = emptyFM
-		       , ircModuleState = emptyFM
-		       , ircUsers = emptyFM
-                       }
 
 readerLoop :: ThreadId -> Chan IRCMessage -> Chan IRCMessage -> Handle -> IO ()
 readerLoop threadmain chanR chanW h
@@ -343,7 +328,7 @@ readerLoop threadmain chanR chanW h
                    debug "input" $ init input
 		   -- remove trailing '^M'
 		   let line = init input  -- [ c | c <- line, c /= '\n', c /= '\r' ]
-		   writeTextRaw $ "r " ++ line
+		   debugDo $ writeTextRaw $ "r " ++ line
 		   case (whead line) of
 			"PING" -> writeChan chanW $ mkIrcMessage "PONG" "" (tail $ wtail line)
 			_ -> writeChan chanR $ decodeMessage line
@@ -364,7 +349,7 @@ writerLoop threadmain chanW h
       = do msg <- readChan chanW
 -- 	   putStrLn $ show msg
 	   let encmsg = encodeMessage msg
-	   writeTextRaw $ "w " ++ encmsg
+	   debugDo $ writeTextRaw $ "w " ++ encmsg
            hPutStrLn h $ encmsg ++ "\r"
            writerLoop'
 
@@ -379,7 +364,7 @@ writerLoop threadmain chanW h
 --       = do (text, chan) <- readChan chanI
 -- 	   let msg = mkIrcMessage target middle tail
 -- 	       encmsg = encodeMessage msg
--- 	   writeTextRaw $ "i " ++ encmsg
+-- 	   debugDo $ writeTextRaw $ "i " ++ encmsg
 --            hPutStr h encmsg
 --            interactLoop'
 
@@ -454,23 +439,23 @@ ircInstallModule modl
   = do  s <- get
         modname <- moduleName modl
         let modmap = ircModules s
-        put (s { ircModules = addToFM modmap modname (MODULE modl) })
+        put (s { ircModules = Map.insert modname (MODULE modl) modmap })
         ircLoadModule modname
 
 ircLoadModule :: String -> IRC ()
 ircLoadModule modname = do
-    maybemod   <- gets (\s -> lookupFM (ircModules s) modname)
-    maybeDo maybemod $ \ (MODULE m) -> ircLoadModule' m >> moduleInit m
+    maybemod   <- gets (\s -> Map.lookup modname (ircModules s))
+    maybeDo_ maybemod $ \ (MODULE m) -> ircLoadModule' m >> moduleInit m
   where
     ircLoadModule' m
       = do  cmds <- commands m
             s <- get
-            let cmdmap = ircCommands s        -- :: FiniteMap String MODULE
-            put (s { ircCommands = addListToFM cmdmap [ (cmd,(MODULE m)) | cmd <- cmds ] })
+            let cmdmap = ircCommands s        -- :: Map String MODULE
+            put (s { ircCommands = foldr (\ cmd mp -> Map.insert cmd (MODULE m) mp) cmdmap cmds })
 
 -- ircUnloadModule :: String -> IRC ()
 -- ircUnloadModule modname
---     = do maybemod <- gets (\s -> lookupFM (ircModules s) modname)
+--     = do maybemod <- gets (\s -> lookup (ircModules s) modname)
 --          case maybemod of
 --                        Just (MODULE m) | moduleSticky m -> ircUnloadModule' m
 --                        _ -> return ()
@@ -479,15 +464,15 @@ ircLoadModule modname = do
 --         = do modname <- moduleName m
 --              cmds    <- commands m
 --              s <- get
---              let modmap = ircModules s        -- :: FiniteMap String MODULE,
---                  cmdmap = ircCommands s        -- :: FiniteMap String MODULE
+--              let modmap = ircModules s        -- :: Map String MODULE,
+--                  cmdmap = ircCommands s        -- :: Map String MODULE
 --                  in
---                  put (s { ircCommands = delListFromFM cmdmap cmds })
+--                  put (s { ircCommands = delListFrom cmdmap cmds })
 
 -- for lambdabot
 checkPrivs :: IRCMessage -> String -> IRC () -> IRC ()
 checkPrivs msg target f = do 
-                          maybepriv <- gets (\s -> lookupFM (ircPrivilegedUsers s) (msgNick msg))
+                          maybepriv <- gets (\s -> Map.lookup (msgNick msg) (ircPrivilegedUsers s))
                           case maybepriv of
                                          Just _  -> f
                                          Nothing -> ircPrivmsg target "not enough privileges"
@@ -497,50 +482,51 @@ stripMS (ModuleState x) = fromJust . fromDynamic . toDyn $ x
 
 logMessage :: String -> IRC ()
 logMessage txt = do
-   h <- asks ircLogFile
+   h <- gets ircLogFile
    time <- liftIO timeStamp
    date <- liftIO dateStamp
-   liftIO $ hPutStrLn h $ date +-+ time +-+ txt
+   liftIO $ hPutStrLn h $ date +-+ time +-+ (encodeUTF8 txt)
 
 dateStamp :: IO String
 dateStamp = do
   ct <- (getClockTime >>= toCalendarTime)
   return $ formatCalendarTime defaultTimeLocale (iso8601DateFormat Nothing) ct
 
-setChanUsers :: [String] -> String -> IRC ()
-setChanUsers users ch = do
+addChanUsers :: [(String,Bool)] -> String -> IRC ()
+addChanUsers userops ch = do
     mchan <- getIRCChannel ch
-    maybeDo mchan setChanUsers'
-    mapM_ (addUserChan ch) users
+    maybeDo_ mchan addChanUsers'
+    mapM_ (addUserChan ch) $ map fst userops
   where
-  setChanUsers' :: IRCChannel -> IRC ()
-  setChanUsers' chan = do
-      let chan' = chan { chanusers = users }
-      modify (\ s -> s { ircChannels = addToFM (ircChannels s) ch chan' })
+  addChanUsers' :: IRCChannel -> IRC ()
+  addChanUsers' chan = do
+      let userfm = chanusers chan
+          chan' = chan { chanusers = foldr (\ (user,op) mp -> Map.insert user op mp) userfm userops }
+      modify (\ s -> s { ircChannels = Map.insert ch chan' (ircChannels s) })
 
 joinChanUser :: String -> String -> IRC ()
 joinChanUser user ch = do
     mchan <- getIRCChannel ch
-    maybeDo mchan addChanUser
+    maybeDo_ mchan addChanUser
     addUserChan ch user
   where
   addChanUser :: IRCChannel -> IRC ()
   addChanUser chan = do
-      let users = chanusers chan
-	  chan' = chan { chanusers = users ++ [user] }
-      modify (\ s -> s { ircChannels = addToFM (ircChannels s) ch chan' })
+      let userfm = chanusers chan
+	  chan' = chan { chanusers = Map.insert user False userfm }
+      modify (\ s -> s { ircChannels = Map.insert ch chan' (ircChannels s) })
 
 partChanUser :: String -> String -> IRC ()
 partChanUser user ch = do
     mchan <- getIRCChannel ch
-    maybeDo mchan removeChanUser
+    maybeDo_ mchan removeChanUser
     removeUserChan ch user
   where
   removeChanUser :: IRCChannel -> IRC ()
   removeChanUser chan = do
-      let users = chanusers chan
-	  chan' = chan { chanusers = delete user users }
-      modify (\ s -> s { ircChannels = addToFM (ircChannels s) ch chan' })
+      let userfm = chanusers chan
+	  chan' = chan { chanusers = Map.delete user userfm }
+      modify (\ s -> s { ircChannels = Map.insert ch chan' (ircChannels s) })
 
 -- userInChan :: String -> String -> IRC Bool
 -- userInChan user ch = do
@@ -550,9 +536,9 @@ partChanUser user ch = do
 getUserChannels :: String -> IRC [String]
 getUserChannels nick = do
     users <- gets ircUsers
-    debug "users" $ fmToList users
-    let chans = lookupFM users (map toLower nick)
-    debug "chans" chans
+    debug "users" $ Map.toList users
+    let chans = Map.lookup (map toLower nick) users
+    debug "getUserChannels" chans
     return $ fromMaybe [] chans
 
 addUserChan :: String -> String -> IRC ()
@@ -569,30 +555,42 @@ removeUserChan chan user = do
 
 removeUser :: String -> IRC ()
 removeUser user =
-    modify (\ s -> s { ircUsers = delFromFM (ircUsers s) user })
+    modify (\ s -> s { ircUsers = Map.delete user (ircUsers s) })
 
 setUserChans :: String -> [String] -> IRC ()
 setUserChans user chans =
-    modify (\ s -> s { ircUsers = addToFM (ircUsers s) user chans })
+    modify (\ s -> s { ircUsers = Map.insert user chans (ircUsers s) })
 
-renameUser :: String -> String -> IRC ()
+renameUser :: Channel -> Channel -> IRC ()
 renameUser old new = do
     chans <- getUserChannels old
-    debug "chans" chans
+    debug "renameUser" chans
     removeUser old
     setUserChans new chans
     mapM_ (partChanUser old) chans
     mapM_ (joinChanUser new) chans
+    chanlist <- gets ircChannels
+    when (Map.member old chanlist) $ renamePrivateChan chanlist
+    debug "renameUser" "done"
+  where
+  renamePrivateChan :: ChannelList -> IRC ()
+  renamePrivateChan chans = do
+      let mchan = Map.lookup old chans
+      maybeDo_ mchan $ \ chan -> do
+          let chan' = chan { channame = new }
+              chans' = Map.delete old chans
+          modify (\ s -> s { ircChannels = Map.insert new chan chans' })
+          liftIO $ renameChannelTab old new
 
 displayIRCchannel :: String -> IRC ()
 displayIRCchannel ch = do
     chan <- getIRCChannel ch
-    liftIO $ maybeDo chan (displayChannelTab True) 
+    liftIO $ maybeDo_ chan (displayChannelTab True) 
 
 setChannelCoding :: Channel -> Maybe String -> IRC ()
 setChannelCoding ch coding = do
     chan <- getIRCChannel ch
-    maybeDo chan $ \ chn -> modify (\ s -> s { ircChannels = addToFM (ircChannels s) (channame chn) (chn { chancoding = coding }) })
+    maybeDo_ chan $ \ chn -> modify (\ s -> s { ircChannels = Map.insert ch (chn { chancoding = coding }) (ircChannels s) })
 
 -- getChannelCoding :: Channel -> IRC (Maybe String)
 -- getChannelCoding ch = do

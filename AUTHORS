@@ -5,3 +5,6 @@ Jens Petersen <petersen@haskell.org>
 
 Andrew J. Bromage <ajb@spamcop.net>
 * wrote the original Main and IRC modules in lambdabot.
+
+Axel Simon
+* updated to newer gtk2hs

@@ -3,7 +3,7 @@
 --  Author : Jens-Ulrik Petersen
 --  Created: May 2003
 --
---  Version: $Revision: 1.7 $ from $Date: 2003/10/05 03:51:31 $
+--  Version: $Revision: 1.9 $ from $Date: 2008/11/03 03:14:11 $
 --
 --  Copyright (c) 2003 Jens-Ulrik Holger Petersen
 --
@@ -25,8 +25,10 @@ module GUI (addIRCchannel,
             hideIRCchannel,
             newIRCchannel,
             rawchannel,
+            renameChannelTab,
             setupGUI,
             timeStamp,
+            updateChannelTab,
             writeTextLn,
             writeTextRaw,
             Interactive)
@@ -35,8 +37,8 @@ where
 import Control.Concurrent
 -- import Control.Exception
 import Control.Monad (when, unless)
-import Data.Char (toLower)
--- import Data.FiniteMap
+import Data.Char (isSpace, toLower)
+import Data.Map (empty)
 -- import Data.Maybe (fromMaybe, fromJust, isJust)
 -- import System.Exit
 import System.IO.Unsafe (unsafePerformIO)
@@ -46,17 +48,16 @@ import System.Locale
 import Channel
 import Debug
 import EntryArea (setEditable)
-import Gtk hiding (Event(..))  -- needed to hide `str' and `time'
-import Hierarchy (toContainer)
+import Graphics.UI.Gtk hiding (afterPasteClipboard)
+import Graphics.UI.Gtk.Multiline.TextView(afterPasteClipboard)
+-- import Hierarchy (toContainer)
 import GtkKeymap
 import MaybeDo
 import Threads
 import WordString
-import TextBufferCreateTag (textBufferCreateTagBool)
-import TextView (afterPasteClipboard)
 
--- tabchannel :: MVar (FiniteMap Int IRCChannel)
--- tabchannel = unsafePerformIO $ newMVar emptyFM
+-- tabchannel :: MVar (FiniteMap Int Channel)
+-- tabchannel = unsafePerformIO $ newMVar empty
 
 book :: Notebook
 book = unsafePerformIO notebookNew
@@ -65,15 +66,15 @@ allchannel :: IRCChannel
 allchannel = unsafePerformIO $ addIRCchannel "%all" "/" False
 
 rawchannel :: IRCChannel
-rawchannel = unsafePerformIO $ addIRCchannel "%raw" "/" False
+rawchannel = unsafePerformIO $ newIRCchannel "%raw" "/" False
 
 alertchannel :: IRCChannel
-alertchannel = unsafePerformIO $ addIRCchannel "%alert" "/" False
+alertchannel = unsafePerformIO $ newIRCchannel "%alert" "/" False
 
 type MainWidget = Container
 
 toMainWidget :: ContainerClass a => a -> MainWidget
-toMainWidget = toContainer
+toMainWidget = castToContainer
 
 mainwidget :: MVar MainWidget
 mainwidget = unsafePerformIO $ newEmptyMVar
@@ -85,7 +86,7 @@ setupGUI :: IO ()
 setupGUI = do
   initGUI
   let window = mainwindow
-  windowSetDefaultSize window 500 348
+  windowSetDefaultSize window 496 382
   windowSetTitle window "Hircules IRC client"
   onDelete window (const $ shutDown >> return True)
   notebookSetScrollable book True
@@ -103,18 +104,18 @@ setupGUI = do
 
 globalKeyBindings :: [Keybinding]
 globalKeyBindings =
-    [ KB [ModCtrl] "1" (switchToTab 0)
-    , KB [ModCtrl] "2" (switchToTab 1)
-    , KB [ModCtrl] "3" (switchToTab 2)
-    , KB [ModCtrl] "4" (switchToTab 3)
-    , KB [ModCtrl] "5" (switchToTab 4)
-    , KB [ModCtrl] "6" (switchToTab 5)
-    , KB [ModCtrl] "7" (switchToTab 6)
-    , KB [ModCtrl] "8" (switchToTab 7)
-    , KB [ModCtrl] "9" (switchToTab 8)
-    , KB [ModCtrl] "0" (switchToTab 9)
-    , KB [ModCtrl,ModShift] "W" hideCurrentChannel
-    , KB [ModCtrl] "q" shutDown
+    [ KB [Control] "1" (switchToTab 0)
+    , KB [Control] "2" (switchToTab 1)
+    , KB [Control] "3" (switchToTab 2)
+    , KB [Control] "4" (switchToTab 3)
+    , KB [Control] "5" (switchToTab 4)
+    , KB [Control] "6" (switchToTab 5)
+    , KB [Control] "7" (switchToTab 6)
+    , KB [Control] "8" (switchToTab 7)
+    , KB [Control] "9" (switchToTab 8)
+    , KB [Control] "0" (switchToTab 9)
+    , KB [Control,Shift] "W" hideCurrentChannel
+    , KB [Control] "q" shutDown
     ]
   where
   switchToTab :: Int -> IO ()
@@ -133,8 +134,11 @@ globalKeyBindings =
 
 bufferKeyBindings :: IRCChannel -> [Keybinding]
 bufferKeyBindings chan =
-  [ KB [] "Return" (sendInput chan)]
-  
+  [ KB [Control] "Return" (sendInput chan)
+  , KB [Control] "r" (searchChannel chan True)
+  , KB [Control] "s" (searchChannel chan False)
+  ]
+
 addIRCchannel :: String -> String -> Bool -> IO IRCChannel
 addIRCchannel title nick real = do
   chan <- newIRCchannel title nick real
@@ -152,7 +156,8 @@ displayChannelTab switch chan = do
                   n <- notebookGetNPages book
                   let lbltxt = show (n + 1) ++ " " ++ (channame chan)
                   label <- labelNew $ Just lbltxt
-                  notebookAppendPageMenu book mainbox label lbltxt
+                  menulabel <- labelNew $ Just lbltxt
+                  notebookAppendPageMenu book mainbox label menulabel
                   return n
   when switch $
       notebookSetCurrentPage book page
@@ -164,10 +169,15 @@ newIRCchannel title nick real = do
   scrolledWindowSetPolicy scrollwin PolicyAutomatic PolicyAlways
 --   boxPackStart mainbox scrollwin PackGrow 0
   buffer <- textBufferNew Nothing
-  textBufferCreateTagBool buffer "not-editable" "editable" False
-  textBufferCreateTagBool buffer "editable" "editable" True
+  tTable <- textBufferGetTagTable buffer
+  e <- textTagNew $ Just "editable"
+  set e [textTagEditable := True]
+  ne <- textTagNew $ Just "not-editable"
+  set ne [textTagEditable := False]
+  textTagTableAdd tTable e
+  textTagTableAdd tTable ne
   view <- textViewNewWithBuffer buffer
-  textViewSetWrapMode view WrapWord
+  textViewSetWrapMode view WrapWordChar
   textViewSetEditable view True
   containerAdd scrollwin view
   textBufferSetText buffer $ 
@@ -194,11 +204,11 @@ newIRCchannel title nick real = do
   entrymark <- textBufferCreateMark buffer Nothing entry True
   nend <- textBufferGetIterAtMark buffer nickend'
   nickend <- textBufferCreateMark buffer Nothing nend False
-  let result = IRCChan {chanbuffer = buffer, channame = (map toLower title), chanreal = real, chanend = endmark, channick = nickend, chanbox = toMainWidget scrollwin, chanentry = entrymark, chanview = view, chanusers = [], chantopic = "", chancoding = Nothing}
+  let result = IRCChan {chanbuffer = buffer, channame = (map toLower title), chanreal = real, chanend = endmark, channick = nickend, chanbox = toMainWidget scrollwin, chanentry = entrymark, chanview = view, chanusers = empty, chantopic = "", chancoding = Nothing}
   keymap <- newKeymap
   mapM_ (keymapAdd keymap) $ bufferKeyBindings result
   onKeyPress view $ keyPressCB keymap
-  TextView.afterPasteClipboard view (setEditable result)
+  afterPasteClipboard view (setEditable result)
   widgetShowAll scrollwin
   return result
 
@@ -214,7 +224,7 @@ hideIRCchannel chan = do
      else do
           let mainbox = chanbox chan
           p <- notebookPageNum book mainbox
-          maybeDo p doRemoveNthPage
+          maybeDo_ p doRemoveNthPage
 
 doRemoveNthPage :: Int -> IO ()
 doRemoveNthPage page = do
@@ -236,7 +246,7 @@ writeTextLn chan alert str = do
   newmark <- textBufferCreateMark buffer Nothing end True
   time <- timeStamp
   no_text <- textIterIsStart end
-  textBufferInsert buffer end $ (if no_text then "" else "\n") ++ time ++ " " ++ str
+  textBufferInsert buffer end $ (if no_text then "" else "\n") ++ time ++ " " ++ cleanup str
   start <- textBufferGetIterAtMark buffer newmark
   end' <- textBufferGetIterAtMark buffer endmark
   textBufferApplyTagByName buffer "not-editable" start end'
@@ -249,8 +259,13 @@ writeTextLn chan alert str = do
   textBufferGetInsert buffer >>= textViewScrollMarkOnscreen (chanview chan)
 --   when (cursorAtEnd && not autoscroll)
 --       (textBufferGetIterAtMark buffer endmark >>= textBufferPlaceCursor buffer)
-  displayChannelTab False chan
-  updateChannelTab chan alert
+  when alert $ do
+      displayChannelTab False chan
+      updateChannelTab chan alert
+  where
+  cleanup :: String -> String
+  -- remove trailing whitespace
+  cleanup = reverse . dropWhile isSpace . reverse 
 
 writeTextRaw :: String -> IO ()
 writeTextRaw str = writeTextLn rawchannel True str
@@ -284,7 +299,7 @@ updateChannelTab chan alert = do
       (Just p) -> do
           let text = show (p + 1) ++ " " ++ (channame chan)
               markup = if alert && current /= p
-                          then markSpan [FontForeground "red"]  text
+                          then highlightText text
                           else text
           label <- labelNew Nothing
           labelSetMarkup label markup
@@ -313,8 +328,38 @@ updateTabN n = do
          Just w -> do
              mlbl <- notebookGetTabLabel book w
              case mlbl of
-                   Just label -> do
+                   Just lbl -> do
+                       let label = castToLabel lbl
                        txt <- labelGetText label
                        labelSetText label $ unhighlightText txt
                    Nothing -> return ()
          Nothing -> return ()
+
+-- FIXME todo
+renameChannelTab :: Channel -> Channel -> IO ()
+renameChannelTab old new = do
+    return ()    
+
+lastSearchText :: MVar String
+lastSearchText = unsafePerformIO $ newMVar ""
+
+searchChannel :: IRCChannel -> Bool -> IO ()
+searchChannel chan backwds = do
+    let buffer = chanbuffer chan
+    startIter <- textBufferGetInsert buffer >>= textBufferGetIterAtMark buffer
+    slctn <- textBufferHasSelection buffer
+    text <- if slctn
+               then do
+                    slctIter <- textBufferGetSelectionBound buffer >>= textBufferGetIterAtMark buffer
+                    textBufferGetText buffer startIter slctIter False
+               else readMVar lastSearchText
+    if null text
+       then return ()
+       else do
+            swapMVar lastSearchText text
+            result <- (if backwds then textIterBackwardSearch else textIterForwardSearch) startIter text [] Nothing
+            maybe (return ()) (\ (start, end) -> do
+                               textBufferPlaceCursor buffer (if backwds then start else end)
+                               textBufferMoveMarkByName buffer "selection_bound" (if backwds then end else start)
+                               textBufferGetInsert buffer >>= textViewScrollMarkOnscreen (chanview chan))
+                             result
