@@ -5,7 +5,7 @@
 --  Version: $Revision: 1.9 $ from $Date: 2008/11/03 03:14:11 $
 --
 --  Copyright (c) 2003 Andrew J. Bromage
---  Copyright (c) 2003, 2004 and 2006, 2010 Jens-Ulrik Holger Petersen
+--  Copyright (c) 2003, 2004, 2006, 2008-2010 Jens-Ulrik Holger Petersen
 --
 --  See the "COPYING" file for license information.
 

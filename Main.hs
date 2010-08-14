@@ -1,6 +1,6 @@
 --  Main.hs: hircules IRC client
 --
---  Copyright (c) 2008 Jens-Ulrik Holger Petersen
+--  Copyright (c) 2008-2010 Jens-Ulrik Holger Petersen
 --
 --  See the "LICENSE" file for license information.
 

@@ -5,7 +5,7 @@
 --
 --  Version: $Revision: 1.9 $ from $Date: 2008/11/03 03:14:11 $
 --
---  Copyright (c) 2003 Jens-Ulrik Holger Petersen
+--  Copyright (c) 2003, 2008-2010 Jens-Ulrik Holger Petersen
 --
 --  This program is free software; you can redistribute it and/or
 --  modify it under the terms of the GNU General Public
