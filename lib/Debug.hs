@@ -13,9 +13,10 @@ setDebug :: Bool -> IO Bool
 setDebug st =
     do swapMVar debugging st
 
-debug :: (Show a, MonadIO m) => a -> m ()
-debug v =
+debug :: (Show a, MonadIO m) => String -> a -> m ()
+debug txt v =
     do
     dbg <- liftIO $ readMVar debugging
     when dbg $
-      liftIO $ putStrLn $ show v
+      liftIO $ do
+          putStrLn $ txt ++ ": " ++ show v

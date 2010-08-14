@@ -21,7 +21,7 @@ dnl ######################################################################
 
 
 dnl Initialise.
-AC_INIT(hircules, 0.2)
+AC_INIT(hircules, 0.3)
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR(Main.hs)
 RELEASE=1

@@ -1,4 +1,4 @@
 module MaybeDo (maybeDo) where
 
-maybeDo :: Monad m => (a -> m ()) -> Maybe a -> m ()
-maybeDo act mb = maybe (return ()) act mb
+maybeDo :: Monad m => Maybe a -> (a -> m ()) -> m ()
+maybeDo mb act = maybe (return ()) act mb

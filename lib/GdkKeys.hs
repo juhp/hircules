@@ -7,7 +7,7 @@
 --  Author : Jens Petersen
 --  Created: 24 May 2002
 --
---  Version $Revision: 1.1.1.1 $ from $Date: 2003/05/15 22:17:50 $
+--  Version $Revision: 1.2 $ from $Date: 2003/07/17 07:43:41 $
 --
 --  Copyright (c) 2002 Jens Petersen
 --
@@ -37,8 +37,7 @@ module GdkKeys(
   keyvalFromName
   ) where
 
-import UTFCForeign
-import Foreign
+import FFI
 import LocalData(unsafePerformIO)
 
 

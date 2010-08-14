@@ -13,7 +13,7 @@ whead str =
 wtail :: String -> String
 wtail s = 
     let start = dropWhile isSpace s
-	(first, rest) = break isSpace start in
+	(_, rest) = break isSpace start in
     if null rest
        then ""
        else tail rest
@@ -22,7 +22,10 @@ wlast :: String -> String
 wlast = last . words
 
 wnth :: Int -> String -> String
-wnth n cs | n>1 = (words cs) !! (n-1)
+wnth n cs | (n > 1 && n <= length ws) = ws !! (n-1)
+  where
+  ws = words cs
+wnth _ _ = ""
 
 -- splitColon :: String -> (String,String)
 -- splitColon cs = (p1,p2)
@@ -54,7 +57,7 @@ s1 +-+ s2 = s1 ++ " " ++ s2
 split :: Eq a => [a] -- ^ Glue that holds pieces together
       -> [a]         -- ^ List to break into pieces
       -> [[a]]       -- ^ Result: list of pieces
-split glue xs = split' xs
+split glue = split'
     where
     split' [] = []
     split' xs = piece : split' rest

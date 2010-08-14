@@ -3,7 +3,7 @@
 --  Author : Jens-Ulrik Petersen
 --  Created: 15 July 2002
 --
---  Version:  $Revision: 1.2 $ from $Date: 2003/07/03 11:24:41 $
+--  Version:  $Revision: 1.3 $ from $Date: 2003/10/05 12:13:42 $
 --
 --  Copyright (c) 2002 Jens-Ulrik Holger Petersen
 --
@@ -45,10 +45,10 @@ newKeymap :: IO Keymap
 newKeymap = newMVar emptyFM
 
 keymapAdd :: Keymap -> Keybinding -> IO ()
-keymapAdd keymap (KB mod name act) =
+keymapAdd keymap (KB modi name act) =
     modifyMVar_ keymap $ \keyfm -> do
---       debug $ symsToInt mod
-      return $ addToFM keyfm (name, symsToInt mod) act
+--       debug $ symsToInt modi
+      return $ addToFM keyfm (name, symsToInt modi) act
   where
       symsToInt :: [ModSym] -> Modifier
       symsToInt ss = foldl (+) 0 $ map (\s -> 2^(fromEnum s)) ss
@@ -57,13 +57,13 @@ keyPressCB :: Keymap -> Event -> IO Bool
 keyPressCB keymap ev =
     do
     keyfm <- readMVar keymap
-    let mod = modif ev
+    let modi = modif ev
 	keyname = keyvalName $ keyval ev
---     debug mod
---     debug keyname
+--     debug modi
+--     debug "keyCB"keyname
     case keyname of
 	 Just key ->
-	   case lookupFM keyfm (key, mod) of
+	   case lookupFM keyfm (key, modi) of
 		Just act -> do act
 		               return True
 		Nothing -> return False

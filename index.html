@@ -6,7 +6,6 @@
 
   <body>
     <h1>Hircules - an IRC client in haskell</h1>
-
     <p>
       Hircules (pronounced like the Greek hero) is an IRC
       client written in Haskell.  The code was initially
@@ -14,24 +13,57 @@
       href="http://www.haskell.org/hawiki/LambdaBot">lambdabot</a>
       and uses <a
       href="http://gtk2hs.sourceforge.net/">gtk2hs</a> for
-      the UI.  It currently supports tabs
-      for channels and private dialogs, but it is still
-      quite primitive. I'm planning to add more features like
-      completions, coloring of nicks
-      and conversations, better keybindings and UI, etc (see
-      the <a href="TODO">TODO</a> file for a longer list).
-    </p>
-    <p>Hircules has a <a href="http://sourceforge.net/projects/hircules/">SourceForge project page</a>.</p>
-    <p>Here's a screenshot of hircules-0.1 running:</p>
+      the UI.  It has tabs for channels and private dialogs
+      with highlighting. I'm planning to add more features
+      like completions, coloring of nicks and conversations,
+      better keybindings and UI, etc (see the <a
+      href="TODO">TODO</a> file for a longer list).
+      Hircules has a <a href="http://sourceforge.net/projects/hircules/">SourceForge project page</a>.</p>
+    <p>Here's a screenshot of hircules-0.3 running:</p>
     <img src="Screenshot-Hircules.png" ALT="[screenshot (28kB)]" />
 
     <h2>News</h2>
     <ul>
-      <li>2003-07-03 <b>Hircules 0.2 released</b>
+      <li>2003-10-05 <b>Hircules 0.3 released</b>: <a href="http://sourceforge.net/project/showfiles.php?group_id=81211">download</a> from the SourceForge project page
 	<ul>
-	  <li>Hircules 0.2 is now available from the <a href="http://sourceforge.net/projects/hircules/">SourceForge project page</a>.</li>
-	  <li>The <a href="NEWS">News</a> and <a href="ChangeLog">ChangeLog</a> files contain details about the latest changes, fixes and new features.</li>
-	  <li>To build it yourself, you'll probably need a pretty current gtk2hs.  (An recent snapshot rpm is availble from <a href="http://haskell.org/~petersen/rpms/gtk2hs/">Haskell rpms</a>)</li>
+	  <li>Lots of new features and bug fixes including:
+	    <ul>
+	      <li>input area at bottom of channel buffer allowing editing of multiline input</li>
+	      <li>improved charset support:
+		<ul>
+		  <li>support for utf-8</li>
+		  <li>auto-decoding of iso-2022-jp</li>
+		  <li>/coding command to set and show channel write encoding</li>
+		</ul>
+	      </li>
+	      <li>tab highlighting of channel activity</li>
+	      <li>when using lambdabot modules, exceptions are now caught</li>
+	      <li>one can move to a virtual channel buffer with /join now</li>
+	      <li>date-stamping in irc log</li>
+	    </ul>
+	  </li>
+	  <li>For more details see the <a href="NEWS">News</a> and <a href="ChangeLog">ChangeLog</a> files.</li>
+	  <li>To build it yourself, you'll probably need a pretty current <a href="http://gtk2hs.sourceforge.net/">gtk2hs</a> from cvs.  (An recent snapshot rpm (built for gtk2-2.2 and glibc-2.3) is available from my <a href="http://haskell.org/~petersen/rpms/gtk2hs/">haskell rpms</a>)</li>
+	</ul>
+      </li>	
+      <li>2003-07-03 <b>Hircules 0.2 available for download from the <a href="http://sourceforge.net/project/showfiles.php?group_id=81211&release_id=169395">SourceForge project page</a></b>
+	<ul>
+	  <li>Lots of bug fixes including:
+	    <ul>
+	      <li>Whitespace in messages is now preserved.</li>
+	      <li>CTCP actions are now displayed properly.</li>
+	      <li>MODE changes should now be displayed properly.</li>
+	      <li>Quit and nick-change messages now only appear now in the relevant channels.</li>
+	      <li>many other minor fixes.</li>
+	    </ul>
+	    New features include:
+	    <ul>
+	      <li>The "/me" command has been added for writing ctcp actions.</li>
+	      <li>All channels are now logged to a log file.</li>
+	      <li>Private messages and public messages addressed to one (ie with "nick: ...")
+		cause an audible beep, and public messages addressed to one also appear in a new virtual Alert channel.</li>
+	    </ul>
+	  </li>
 	</ul>
       </li>	
       <li>2003-05-16 <b>Hircules is now hosted on SourceForge.Net.</b>
@@ -58,9 +90,9 @@
     <h2>Building</h2>
     <p>To build Hircules you need:
       <ul>
-	<li><a href="http://haskell.org/ghc/">ghc</a>, the Glasgow Haskell Compiler (ghc-5.04.3 is known to work for gtk2hs)</li>
+	<li><a href="http://haskell.org/ghc/">ghc</a>, the Glasgow Haskell Compiler (ghc-6.0.1 recommended)</li>
 	<li><a href="gtk2hs.sourceforge.net/">gtk2hs</a>, a GTK 2 Binding for Haskell (you probably need cvs HEAD).</li>
-      <li>Optionally <a href="http://prdownloads.sourceforge.net/haskell-libs/lambdabot-1.0.tar.gz">lambdabot</a> 1.0</li>
+      <li>Optionally <a href="http://prdownloads.sourceforge.net/haskell-libs/">lambdabot</a></li>
     </ul>
     </p>
 <a href="http://sourceforge.net"><img src="http://sourceforge.net/sflogo.php?group_id=81211&amp;type=4" width="125" height="37" border="0" alt="SourceForge.net Logo" /></a>
@@ -68,7 +100,7 @@
     <address><a href="mailto:petersen@haskell.org">Jens Petersen</a></address>
 <!-- Created: Thu May  8 07:11:40 JST 2003 -->
 <!-- hhmts start -->
-Last modified: Thu Jul  3 21:48:30 JST 2003
+Last modified: Sun Oct  5 21:01:31 JST 2003
 <!-- hhmts end -->
   </body>
 </html>

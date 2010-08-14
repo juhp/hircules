@@ -5,7 +5,7 @@
 ## Author : Jens Petersen <petersen@haskell.org>
 ## Created: 2003-05-14
 ##
-## Version $Revision: 1.4 $ from $Date: 2003/07/03 21:30:47 $
+## Version $Revision: 1.7 $ from $Date: 2003/10/05 08:16:34 $
 ##
 ## Copyright (c) 2003 Jens-Ulrik Holger Petersen
 ##
@@ -19,31 +19,28 @@
 ## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
 ## General Public License for more details.
 
-LIBMODULES = Debug.hs Directories.hs Display.hs GdkKeys.hs GtkKeymap.hs MaybeDo.hs Threads.hs Version.hs.in WordString.hs
-PACKAGES = gtk2 net
+LIBMODULES = Charset.hs Debug.hs Directories.hs Display.hs GdkKeys.hs GtkKeymap.hs Iconv.hs MaybeDo.hs TextBufferCreateTag.hs Threads.hs UTF8.hs Version.hs.in WordString.hs
+PACKAGES = gtk2 network
 LAMBDABOT = @LAMBDABOT@
+HIRCSUBDIRS = lib $(LAMBDABOT) $(wildcard $(LAMBDABOT)/*Module)
 
 bin_PROGRAMS = hircules
-hircules_SOURCES = Main.hs GUI.hs IRC.hs CTCP.hs Config.hs LambdaBot.hsc $(addprefix lib/,$(LIBMODULES))
-EXTRA_DIST = index.html hircules.spec Screenshot-Hircules.png
+hircules_SOURCES = Main.hs Channel.hs GUI.hs IRC.hs CTCP.hs Config.hs EntryArea.hs LambdaBot.hsc $(addprefix lib/,$(LIBMODULES))
+EXTRA_DIST = index.html hircules.spec Screenshot-Hircules.png ANNOUNCE 
 
-HCFLAGS = $(addprefix -package ,$(PACKAGES)) -ilib
-
-#ifneq ($(LAMBDABOT), "")
-HCFLAGS += -i$(LAMBDABOT) -i$(LAMBDABOT)/EvalModule -DLAMBDABOT
-#endif
+HCFLAGS = -Wall $(addprefix -package ,$(PACKAGES)) $(addprefix -i,$(HIRCSUBDIRS))
 
 hircules$(EXEEXT): $(hircules_SOURCES:.hs.in=.hs) LambdaBot.hs
 	$(HC) --make -o $@ $(HCFLAGS) Main.hs
-	strip $@
+#	strip $@
 
 %.hs: %.hsc
-	hsc2hs -DLAMBDABOT $<
+	hsc2hs $(addprefix -DLAMBDABOT=, $(LAMBDABOT)) -o $@ $<
 
 LambdaBot.hs: config.status
 
 ghci:
-	ghci -ilib $(HCFLAGS) $<
+	$(subst ghc,ghci,$(HC)) $(HCFLAGS) $<
 
 RPMARCH = i386
 

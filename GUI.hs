@@ -3,7 +3,7 @@
 --  Author : Jens-Ulrik Petersen
 --  Created: May 2003
 --
---  Version: $Revision: 1.4 $ from $Date: 2003/07/03 21:30:46 $
+--  Version: $Revision: 1.7 $ from $Date: 2003/10/05 03:51:31 $
 --
 --  Copyright (c) 2003 Jens-Ulrik Holger Petersen
 --
@@ -28,39 +28,32 @@ module GUI (addIRCchannel,
             setupGUI,
             timeStamp,
             writeTextLn,
-            IRCChannel(..),
+            writeTextRaw,
             Interactive)
 where
 
 import Control.Concurrent
-import Control.Exception
+-- import Control.Exception
 import Control.Monad (when, unless)
 import Data.Char (toLower)
-import Data.FiniteMap
-import Data.Maybe (fromMaybe, fromJust, isJust)
-import System.Exit
+-- import Data.FiniteMap
+-- import Data.Maybe (fromMaybe, fromJust, isJust)
+-- import System.Exit
 import System.IO.Unsafe (unsafePerformIO)
 import System.Time
 import System.Locale
 
-import Gtk
+import Channel
+import Debug
+import EntryArea (setEditable)
+import Gtk hiding (Event(..))  -- needed to hide `str' and `time'
 import Hierarchy (toContainer)
 import GtkKeymap
+import MaybeDo
 import Threads
-
-import Debug
--- import NotebookGetNPages
-
-data IRCChannel = IRCChan { chanbuffer :: TextBuffer
-                          , channame :: String
-                          , chanreal :: Bool
-                          , chanbox :: Container
-                          , chanlabel :: Label
-                          , chanentry :: Entry
-                          , chanview :: TextView
-                          , chanend :: TextMark
-                          , chanusers :: [String]
-                          , chantopic :: String }
+import WordString
+import TextBufferCreateTag (textBufferCreateTagBool)
+import TextView (afterPasteClipboard)
 
 -- tabchannel :: MVar (FiniteMap Int IRCChannel)
 -- tabchannel = unsafePerformIO $ newMVar emptyFM
@@ -69,13 +62,13 @@ book :: Notebook
 book = unsafePerformIO notebookNew
 
 allchannel :: IRCChannel
-allchannel = unsafePerformIO $ addIRCchannel "all" "/" False
+allchannel = unsafePerformIO $ addIRCchannel "%all" "/" False
 
 rawchannel :: IRCChannel
-rawchannel = unsafePerformIO $ addIRCchannel "raw" "/" False
+rawchannel = unsafePerformIO $ addIRCchannel "%raw" "/" False
 
 alertchannel :: IRCChannel
-alertchannel = unsafePerformIO $ addIRCchannel "alert" "/" False
+alertchannel = unsafePerformIO $ addIRCchannel "%alert" "/" False
 
 type MainWidget = Container
 
@@ -92,19 +85,21 @@ setupGUI :: IO ()
 setupGUI = do
   initGUI
   let window = mainwindow
-  windowSetDefaultSize window 600 500
+  windowSetDefaultSize window 500 348
   windowSetTitle window "Hircules IRC client"
   onDelete window (const $ shutDown >> return True)
+  notebookSetScrollable book True
+  notebookSetPopup book True
+  onSwitchPage book updateTabN
   let initwidget = book
   putMVar mainwidget $ toMainWidget initwidget
   containerAdd window initwidget
   widgetShowAll window
   keymap <- newKeymap
   mapM_ (keymapAdd keymap) globalKeyBindings
-  onKeyPress window (keyPressCB keymap)
+  onKeyPress window $ keyPressCB keymap
   timeoutAdd (yield >> return True) 10
   return ()
-
 
 globalKeyBindings :: [Keybinding]
 globalKeyBindings =
@@ -136,11 +131,15 @@ globalKeyBindings =
         containerAdd mainwindow widget
         putMVar mainwidget $ toMainWidget widget
 
+bufferKeyBindings :: IRCChannel -> [Keybinding]
+bufferKeyBindings chan =
+  [ KB [] "Return" (sendInput chan)]
+  
 addIRCchannel :: String -> String -> Bool -> IO IRCChannel
 addIRCchannel title nick real = do
   chan <- newIRCchannel title nick real
   displayChannelTab True chan
-  widgetGrabFocus $ chanentry chan
+  widgetGrabFocus $ chanview chan
   return chan
 
 displayChannelTab :: Bool -> IRCChannel -> IO ()
@@ -151,38 +150,61 @@ displayChannelTab switch chan = do
              (Just p) -> return p
              Nothing -> do
                   n <- notebookGetNPages book
-                  notebookAppendPage book mainbox $ show (n + 1) ++ " " ++ (channame chan)
+                  let lbltxt = show (n + 1) ++ " " ++ (channame chan)
+                  label <- labelNew $ Just lbltxt
+                  notebookAppendPageMenu book mainbox label lbltxt
                   return n
   when switch $
       notebookSetCurrentPage book page
 
 newIRCchannel :: String -> String -> Bool -> IO IRCChannel
 newIRCchannel title nick real = do
-  mainbox <- vBoxNew False 5
+--   mainbox <- vBoxNew False 5
   scrollwin <- scrolledWindowNew Nothing Nothing
-  scrolledWindowSetPolicy scrollwin PolicyAutomatic PolicyAutomatic 
-  boxPackStart mainbox scrollwin PackGrow 0
+  scrolledWindowSetPolicy scrollwin PolicyAutomatic PolicyAlways
+--   boxPackStart mainbox scrollwin PackGrow 0
   buffer <- textBufferNew Nothing
+  textBufferCreateTagBool buffer "not-editable" "editable" False
+  textBufferCreateTagBool buffer "editable" "editable" True
   view <- textViewNewWithBuffer buffer
-  textViewSetWrapMode view WrapChar
-  textViewSetEditable view False
-  end <- textBufferGetEndIter buffer
-  endmark <- textBufferCreateMark buffer Nothing end False
+  textViewSetWrapMode view WrapWord
+  textViewSetEditable view True
   containerAdd scrollwin view
-  entrybox <- hBoxNew False 3
-  boxPackStart mainbox entrybox PackNatural 0
-  label <- labelNew $ Just nick
-  boxPackStart entrybox label PackNatural 0
-  entry <- entryNew
-  boxPackStart entrybox entry PackGrow 0
-  let result = IRCChan {chanbuffer = buffer, channame = (map toLower title), chanreal = real, chanlabel = label, chanbox = toMainWidget mainbox, chanentry = entry, chanview = view, chanend = endmark, chanusers = [], chantopic = ""}
-  onEntryActivate entry $ sendLine result
-  widgetShowAll mainbox
+  textBufferSetText buffer $ 
+                    if real
+                       then nick
+                       else ""
+--   nstart <- textBufferGetStartIter buffer
+--   nickstart <- textBufferCreateMark buffer Nothing nstart True
+  nend' <- textBufferGetEndIter buffer
+  nickend' <- textBufferCreateMark buffer Nothing nend' True
+--   textMarkSetVisible nickstart True
+--   textMarkSetVisible nickend True
+  textBufferInsert buffer nend' $
+                    if real
+                       then "@" ++ title ++ "> "
+                       else title +-+ nick
+  start' <- textBufferGetStartIter buffer
+  textBufferInsert buffer start' "\n"
+  start <- textBufferGetStartIter buffer
+  end <- textBufferGetEndIter buffer
+  textBufferApplyTagByName buffer "not-editable" start end
+  endmark <- textBufferCreateMark buffer Nothing start False
+  entry <- textBufferGetEndIter buffer
+  entrymark <- textBufferCreateMark buffer Nothing entry True
+  nend <- textBufferGetIterAtMark buffer nickend'
+  nickend <- textBufferCreateMark buffer Nothing nend False
+  let result = IRCChan {chanbuffer = buffer, channame = (map toLower title), chanreal = real, chanend = endmark, channick = nickend, chanbox = toMainWidget scrollwin, chanentry = entrymark, chanview = view, chanusers = [], chantopic = "", chancoding = Nothing}
+  keymap <- newKeymap
+  mapM_ (keymapAdd keymap) $ bufferKeyBindings result
+  onKeyPress view $ keyPressCB keymap
+  TextView.afterPasteClipboard view (setEditable result)
+  widgetShowAll scrollwin
   return result
 
 hideCurrentChannel :: IO ()
 hideCurrentChannel = do
-  notebookGetCurrentPage book >>= (doRemoveNthPage book)
+  notebookGetCurrentPage book >>= doRemoveNthPage
 
 hideIRCchannel :: IRCChannel -> IO ()
 hideIRCchannel chan = do
@@ -192,10 +214,10 @@ hideIRCchannel chan = do
      else do
           let mainbox = chanbox chan
           p <- notebookPageNum book mainbox
-          maybe (return ()) (doRemoveNthPage book) p
+          maybeDo p doRemoveNthPage
 
-doRemoveNthPage :: Notebook -> Int -> IO ()
-doRemoveNthPage book page = do
+doRemoveNthPage :: Int -> IO ()
+doRemoveNthPage page = do
   total <- notebookGetNPages book
   if total <= 1
      then return ()
@@ -206,30 +228,93 @@ doRemoveNthPage book page = do
 updateTabLabels :: IO ()
 updateTabLabels = return ()
 
-writeTextLn :: IRCChannel -> String -> IO ()
-writeTextLn chan str = do
+writeTextLn :: IRCChannel -> Bool -> String -> IO ()
+writeTextLn chan alert str = do
   let buffer = chanbuffer chan
       endmark = chanend chan
   end <- textBufferGetIterAtMark buffer endmark
+  newmark <- textBufferCreateMark buffer Nothing end True
   time <- timeStamp
-  textBufferInsert buffer end $ time ++ " " ++ str ++ "\n"
-  textViewScrollMarkOnscreen (chanview chan) endmark
-  textBufferPlaceCursor buffer end
+  no_text <- textIterIsStart end
+  textBufferInsert buffer end $ (if no_text then "" else "\n") ++ time ++ " " ++ str
+  start <- textBufferGetIterAtMark buffer newmark
+  end' <- textBufferGetIterAtMark buffer endmark
+  textBufferApplyTagByName buffer "not-editable" start end'
+--   let view = chanview chan
+--   viewfocus <- widgetIsFocus view
+--   unless viewfocus $ do
+--       textViewScrollMarkOnscreen view endmark
+--       textBufferPlaceCursor buffer end
+--       displayChannelTab False chan
+  textBufferGetInsert buffer >>= textViewScrollMarkOnscreen (chanview chan)
+--   when (cursorAtEnd && not autoscroll)
+--       (textBufferGetIterAtMark buffer endmark >>= textBufferPlaceCursor buffer)
   displayChannelTab False chan
+  updateChannelTab chan alert
+
+writeTextRaw :: String -> IO ()
+writeTextRaw str = writeTextLn rawchannel True str
 
 timeStamp :: IO String
 timeStamp = do
   ct <- (getClockTime >>= toCalendarTime)
   return $ formatCalendarTime defaultTimeLocale (timeFmt defaultTimeLocale) ct
 
-type Interactive = (String, IRCChannel)
--- signature is in IRC module
+type Interactive = ([String], Channel)
+
+chanI :: Chan Interactive
 chanI = unsafePerformIO newChan
 
-sendLine :: IRCChannel -> IO ()
-sendLine chan = do
+sendInput :: IRCChannel -> IO ()
+sendInput chan = do
   let entry = chanentry chan
-  line <- entryGetText entry
-  entrySetText entry ""
-  writeChan chanI (line, chan)
+      buffer = chanbuffer chan
+  start <- textBufferGetIterAtMark buffer entry
+  end <- textBufferGetEndIter buffer
+  text <- textBufferGetText buffer start end False
+  debug "sendInput" text
+  textBufferDelete buffer start end
+  writeChan chanI (lines text, channame chan)
 
+updateChannelTab :: IRCChannel -> Bool -> IO ()
+updateChannelTab chan alert = do
+  page <- notebookPageNum book mainbox
+  current <- notebookGetCurrentPage book
+  case page of
+      (Just p) -> do
+          let text = show (p + 1) ++ " " ++ (channame chan)
+              markup = if alert && current /= p
+                          then markSpan [FontForeground "red"]  text
+                          else text
+          label <- labelNew Nothing
+          labelSetMarkup label markup
+          notebookSetTabLabel book mainbox label
+      Nothing -> return ()
+  where
+  mainbox = chanbox chan
+
+highlightText :: String -> Markup
+highlightText = markSpan [FontForeground "red"]
+
+unhighlightText :: String -> String
+unhighlightText str | whead str == open && wlast str == close =
+                        take rawlength $ drop (length open) str
+                    | otherwise = str
+  where
+  template = highlightText encl
+  (open,close) = breakString encl template
+  encl = "  "
+  rawlength = length str - length open - length close
+
+updateTabN :: Int -> IO ()
+updateTabN n = do
+     mw <- notebookGetNthPage book n
+     case mw of
+         Just w -> do
+             mlbl <- notebookGetTabLabel book w
+             case mlbl of
+                   Just label -> do
+                       txt <- labelGetText label
+                       labelSetText label $ unhighlightText txt
+                   Nothing -> return ()
+         Nothing -> return ()
