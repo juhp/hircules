@@ -424,8 +424,8 @@ doDisplay msg = do
                             rest' = (tail . wtail) idname
                             user' = whead rest'
                             machine = (whead . wtail) rest' in
-                        (uid +-+ "is" +-+ tale +-+ "(" ++ user' ++ "@" ++ machine ++ ")", "", False)
-               "312" -> ("on" +-+ (wtail . wtail) mid +-+ "(" ++ tale ++ ")", "", False)
+                        (uid +-+ "is" +-+ tale +-+ "(" ++ user' ++ "@" ++ machine ++ ").", "", False)
+               "312" -> (wnth 2 mid +-+ "is on" +-+ (wtail . wtail) mid +-+ "(" ++ tale ++ ").", "", False)
                "317" -> let rest' = (wtail . wtail) mid in
                         (wnth 2 mid +-+ (timeDiffToString $ normalizeTimeDiff $ noTimeDiff { tdSec = read $ whead rest' }) +-+ "idle, on since " ++ (time $ read $ wtail rest') ++ ".", "", False)
                "318" -> ("", "",False)
