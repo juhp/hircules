@@ -360,7 +360,8 @@ doRPL_ENDOFNAMES msg = do
   let ch = wlast $ msgMiddle msg
   mchan <- getIRCChannel ch
   maybeDo_ mchan $ \ chan -> do
-      let output = " Users:" +-+ (unwords . (map concOp) . quickSort . Map.toList) (chanusers chan)
+      let users = Map.toList (chanusers chan)
+          output = show (length users) +-+ "users:" +-+ (unwords . quickSort . (map concOp)) users
 --           chn = channame chan
       ircDisplayAll $ ch ++ output
       ircDisplay ch False output
