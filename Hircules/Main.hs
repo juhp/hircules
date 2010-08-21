@@ -430,10 +430,12 @@ doDisplay msg = do
                         (wnth 2 mid +-+ (timeDiffToString $ normalizeTimeDiff $ noTimeDiff { tdSec = read $ whead rest' }) +-+ "idle, on since " ++ (time $ read $ wtail rest') ++ ".", "", False)
                "318" -> ("", "",False)
                "319" -> ("channels: " ++ tale, "", False)
+               "330" -> (wnth 2 mid +-+ tale +-+ wlast mid ++ ".", "", False)
                "331" -> (tale, wlast mid, False)
                "332" -> ("Topic: " ++ tale, wlast mid, False)
                "333" -> ("set by " ++ (wnth 3 mid) ++ " at " ++ (time $ read $ wlast mid), wnth 2 mid, False)
 --                "353" -> (" Users: " ++ tale, (wlast mid), False)
+               "671" -> (wnth 2 mid +-+ tale ++ ".", "", False)
                _ | and (map isDigit cmd) -> ((wtail mid) ++ " - " ++ tale, "", False)
                _ -> (" " ++ cmd +-+ rest, "", False)
     where
