@@ -20,7 +20,7 @@ import Network (connectTo, withSocketsDo, PortID(..))
 -- import PosixProcEnv (getLoginName)
 import System.Console.GetOpt (getOpt, usageInfo, ArgDescr(..), OptDescr(..), ArgOrder(..))
 import System.Environment (getArgs, getEnv, getProgName)
-import System.Time (ClockTime(..), calendarTimeToString, toCalendarTime)
+import System.Time (ClockTime(..), TimeDiff(..), calendarTimeToString, normalizeTimeDiff, noTimeDiff, timeDiffToString, toCalendarTime)
 import System.IO (BufferMode(..), IOMode(..), hSetBuffering, openFile)
 import System.IO.Unsafe (unsafePerformIO)
 
@@ -426,7 +426,7 @@ doDisplay msg = do
                         (uid +-+ "is" +-+ tale +-+ "(" ++ user' ++ "@" ++ machine ++ ")", "", False)
                "312" -> ("on" +-+ (wtail . wtail) mid +-+ "(" ++ tale ++ ")", "", False)
                "317" -> let rest' = (wtail . wtail) mid in
-                        (whead rest' ++ "s idle, on since " ++ (time $ read $ wtail rest'), "", False)
+                        (wnth 2 mid +-+ (timeDiffToString $ normalizeTimeDiff $ noTimeDiff { tdSec = read $ whead rest' }) +-+ "idle, on since " ++ (time $ read $ wtail rest') ++ ".", "", False)
                "318" -> ("", "",False)
                "319" -> ("channels: " ++ tale, "", False)
                "331" -> (tale, wlast mid, False)
