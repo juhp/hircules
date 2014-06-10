@@ -3,30 +3,47 @@ Version:       0.4.2
 Synopsis:      IRC client
 Description:
     Hircules is an IRC (Internet Relay Chat) client with a gtk GUI.
-    .
-    Summary of changes:
-    .
-    * 0.4.1: update the gtk version dependency
-    .
-    * 0.4: build updates for ghc-6.12 and gtk-0.11
+Homepage:      http://github.com/juhp/hircules
+Bug-reports:   https://github.com/juhp/hircules/issues
 License:       GPL
 License-file:  LICENSE
 Author:        Jens Petersen <petersen@haskell.org>
-Maintainer:    Jens Petersen <petersen@haskell.org>
-Copyright:     2003, 2004, 2006, 2008-2010 Jens-Ulrik Petersen <petersen@haskell.org>
+Maintainer:    Jens Petersen <juhp@community.haskell.org>
+Copyright:     2003, 2004, 2006, 2008-2010, 2014 Jens-Ulrik Petersen <juhp@community.haskell.org>
                2003 Andrew J. Bromage
 Stability:     Experimental
-Homepage:      http://haskell.org/hircules
 Category:      network
 Build-Type:    Simple
 Cabal-Version: >= 1.6
 
 source-repository head
-  type:     darcs
-  location: http://code.haskell.org/hircules
+  type:     git
+  location: http://http://github.com/juhp/hircules.git
 
 Executable hircules
     main-is:       Main.hs
     ghc-options:   -Wall
-    build-depends: base >= 4 && < 5, gtk >= 0.11.0, utf8-string, time, containers, mtl, directory, network, old-time, old-locale
-    other-modules: Control.Monad.MaybeDo, Debug.State, Graphics.UI.Gtk.Keymap, Hircules.Channel, Hircules.Config, Hircules.CTCP, Hircules.Directories, Hircules.EntryArea, Hircules.GUI, Hircules.IRC, Hircules.Main, Hircules.Threads, Text.WordString
+    build-depends: base >= 4 && < 5,
+                   gtk >= 0.11.0,
+                   utf8-string,
+                   time,
+                   containers,
+                   mtl,
+                   directory,
+                   network,
+                   old-time,
+                   old-locale
+    other-modules: Control.Monad.MaybeDo,
+                   Debug.State,
+                   Graphics.UI.Gtk.Keymap,
+                   Hircules.Channel,
+                   Hircules.Config,
+                   Hircules.CTCP,
+                   Hircules.Directories,
+                   Hircules.EntryArea,
+                   Hircules.GUI,
+                   Hircules.IRC,
+                   Hircules.Main,
+                   Hircules.Threads,
+                   Text.WordString
+    Hs-Source-Dirs: src
