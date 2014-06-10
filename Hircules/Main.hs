@@ -14,6 +14,7 @@ import Control.Exception (bracket_, catch)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Char (isAlpha, isDigit, toLower, toUpper)
+import Data.List (sort)
 import qualified Data.Map as Map
 import Data.Version (showVersion)
 import Network (connectTo, withSocketsDo, PortID(..))
@@ -35,7 +36,6 @@ import Hircules.GUI
 import Hircules.IRC
 -- import LambdaBot
 import Control.Monad.MaybeDo
-import Data.Ord.QuickSort
 import Hircules.Threads
 import Paths_hircules (version)
 import Text.WordString
@@ -358,7 +358,7 @@ doRPL_ENDOFNAMES msg = do
   mchan <- getIRCChannel ch
   maybeDo_ mchan $ \ chan -> do
       let users = Map.toList (chanusers chan)
-          output = show (length users) +-+ "users:" +-+ (unwords . quickSort . (map concOp)) users
+          output = show (length users) +-+ "users:" +-+ (unwords . sort . (map concOp)) users
 --           chn = channame chan
       ircDisplayAll $ ch ++ output
       ircDisplay ch False output
