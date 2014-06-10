@@ -1,7 +1,7 @@
 module Debug.State (debug, debugDo, setDebug)
 where
 
-import Foreign (unsafePerformIO)
+import System.IO.Unsafe (unsafePerformIO)
 import Control.Concurrent.MVar (newMVar, swapMVar, readMVar, MVar)
 import Control.Monad (when)
 import Control.Monad.Trans (liftIO, MonadIO)

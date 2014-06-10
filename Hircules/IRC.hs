@@ -1,4 +1,4 @@
-{-# OPTIONS_GHC -fglasgow-exts #-}
+{-# OPTIONS_GHC #-}
 
 --  IRC.hs: an Internet Relay Chat library
 --
@@ -15,7 +15,6 @@ module Hircules.IRC (IRC,
             IRCRWState(..),
             addChanUsers,
             addChannel,
-            checkPrivs,
             displayIRCchannel,
             getChannels,
             getIRCChannel,
@@ -25,7 +24,6 @@ module Hircules.IRC (IRC,
             ircDisplayAlert,
             ircDisplayAll,
             ircInput,
-            ircInstallModule,
             ircJoin,
             ircPart,
             ircPrivmsg,
@@ -53,24 +51,19 @@ module Hircules.IRC (IRC,
             renameUser,
             setChannelCoding,
             setNick,
-            stripMS,
-            writerLoop,
-            Module(..),
-            ModuleState(..),
-            MODULE(..))
+            writerLoop)
 where
 
 import Data.Maybe
 import System.IO (Handle, hGetLine)
 import Control.Concurrent
+import Control.Exception (catch)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Char (toLower)
 import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.Dynamic
-import Data.IORef
 import System.Exit
 import System.IO (hClose, hIsEOF, hPutStrLn)
 
@@ -100,28 +93,8 @@ data IRCRWState
                , ircPrivilegedUsers :: Map String Bool
 	       , ircChannels        :: ChannelList
 	       , ircNick            :: String
-	       , ircModules         :: Map String MODULE
-	       , ircCommands        :: Map String MODULE
-	       , ircModuleState     :: Map String (IORef ModuleState)
 	       , ircUsers           :: Map String [String] -- nick chans
 	       }
-
--- data IRCServer
---   = IRCServer { ircServer      :: String
---               , ircReadChan    :: Chan IRCMessage
---               , ircReadThread  :: ThreadId
---               , ircWriteChan   :: Chan IRCMessage
---               , ircWriteThread :: ThreadId
---               , ircSocket      :: Handle
---               , ircLogFile     :: Handle
---               , ircPrivilegedUsers :: Map String Bool
--- 	      , ircChannels        :: ChannelList
--- 	      , ircNick            :: String
--- 	      , ircModules         :: Map String MODULE
--- 	      , ircCommands        :: Map String MODULE
--- 	      , ircModuleState     :: Map String (IORef ModuleState)
--- 	      , ircUsers           :: Map String [String] -- nick chans
--- 	      }
 
 data IRCMessage
   = IRCMessage {
@@ -154,8 +127,6 @@ msgUser msg =
 -- (deprecated) lambdabot compatibility
 ircnick :: IRCMessage -> String
 ircnick = msgNick
-
-data ModuleState = forall a. Typeable a => ModuleState a
 
 type IRC a = StateT IRCRWState (ReaderT IRCRState IO) a
 
@@ -303,7 +274,7 @@ ircDisplayAlert alert str = liftIO $ writeTextLn alertchannel alert str
 readerLoop :: ThreadId -> Chan IRCMessage -> Chan IRCMessage -> Handle -> IO ()
 readerLoop threadmain chanR chanW h
   = do  -- liftIO (putStrLn "Running reader loop...")
-        catch readerLoop' (throwTo threadmain)
+        readerLoop' `catch` ((throwTo threadmain) :: IOError -> IO ())
   where
     readerLoop' :: IO ()
     readerLoop'
@@ -327,7 +298,7 @@ readerLoop threadmain chanR chanW h
 
 writerLoop :: ThreadId -> Chan IRCMessage -> Handle -> IO ()
 writerLoop threadmain chanW h
-  = catch writerLoop' (throwTo threadmain)
+  = writerLoop' `catch` (throwTo threadmain :: IOError -> IO ())
   where
     writerLoop'
       = do msg <- readChan chanW
@@ -406,62 +377,6 @@ decodeMessage txt =
 -- ctcpDequote ('\134':'\134':cs) = '\134' : ctcpDequote cs
 -- ctcpDequote ('\134':cs)        = ctcpDequote cs
 -- ctcpDequote (c:cs)             = c : ctcpDequote cs
-
-class Module m where
-  moduleName     :: m -> IRC String
-  moduleSticky   :: m -> Bool
-  commands       :: m -> IRC [String]
-  moduleInit     :: m -> IRC ()
-  process        :: m -> IRCMessage -> String -> String -> String -> IRC () -- msg target cmd rest
-  moduleInit _ = return () -- by default, there's no initialisation
-
-data MODULE = forall m. (Module m) => MODULE m
-
-ircInstallModule :: (Module m) => m -> IRC ()
-ircInstallModule modl
-  = do  s <- get
-        modname <- moduleName modl
-        let modmap = ircModules s
-        put (s { ircModules = Map.insert modname (MODULE modl) modmap })
-        ircLoadModule modname
-
-ircLoadModule :: String -> IRC ()
-ircLoadModule modname = do
-    maybemod   <- gets (\s -> Map.lookup modname (ircModules s))
-    maybeDo_ maybemod $ \ (MODULE m) -> ircLoadModule' m >> moduleInit m
-  where
-    ircLoadModule' m
-      = do  cmds <- commands m
-            s <- get
-            let cmdmap = ircCommands s        -- :: Map String MODULE
-            put (s { ircCommands = foldr (\ cmd mp -> Map.insert cmd (MODULE m) mp) cmdmap cmds })
-
--- ircUnloadModule :: String -> IRC ()
--- ircUnloadModule modname
---     = do maybemod <- gets (\s -> lookup (ircModules s) modname)
---          case maybemod of
---                        Just (MODULE m) | moduleSticky m -> ircUnloadModule' m
---                        _ -> return ()
---     where
---     ircUnloadModule' m
---         = do modname <- moduleName m
---              cmds    <- commands m
---              s <- get
---              let modmap = ircModules s        -- :: Map String MODULE,
---                  cmdmap = ircCommands s        -- :: Map String MODULE
---                  in
---                  put (s { ircCommands = delListFrom cmdmap cmds })
-
--- for lambdabot
-checkPrivs :: IRCMessage -> String -> IRC () -> IRC ()
-checkPrivs msg target f = do 
-                          maybepriv <- gets (\s -> Map.lookup (msgNick msg) (ircPrivilegedUsers s))
-                          case maybepriv of
-                                         Just _  -> f
-                                         Nothing -> ircPrivmsg target "not enough privileges"
-
-stripMS :: Typeable a => ModuleState -> a
-stripMS (ModuleState x) = fromJust . fromDynamic . toDyn $ x
 
 logMessage :: String -> IRC ()
 logMessage txt = do

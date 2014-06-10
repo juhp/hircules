@@ -10,7 +10,7 @@
 module Hircules.Main where
 
 import Control.Concurrent
-import Control.Exception (bracket_)
+import Control.Exception (bracket_, catch)
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Char (isAlpha, isDigit, toLower, toUpper)
@@ -90,7 +90,7 @@ main' opts arg = do
       makeDirectory logDir
   runIRC :: IO () -> IO ()
   runIRC m =
-    catch m (\ e -> putStrLn ("Exception: " ++ show e))
+    catch m ((\ e -> putStrLn ("Exception: " ++ show e)) :: IOError -> IO ())
   runIrcInit :: String -> IO ()
   runIrcInit server = withSocketsDo $ do
     s <- liftIO (connectTo hostname (PortNumber portnum))
@@ -114,15 +114,12 @@ main' opts arg = do
 		       , ircPrivilegedUsers = Map.empty  -- FIXME?: was listToFM [ (user,True) | user <- [] ]
 		       , ircChannels = initChans
 		       , ircNick = ""
-		       , ircModules = Map.empty
-		       , ircCommands = Map.empty
-		       , ircModuleState = Map.empty
 		       , ircUsers = Map.empty
                        }
     bracket_ (return ()) (killThread threadr >> killThread threadw)
 		 (runReaderT (evalStateT ircMain initState) rstate)
     where
-    (hostname,port') = if null server then ("irc.freenode.net","") else break (== ':') server
+    (hostname,port') = if null server then ("chat.freenode.net","") else break (== ':') server
     port = if null port' then "6667" else tail port'
     portnum = fromIntegral (read port :: Integer)
     initChans = Map.fromList $ [("%all", allchannel),
@@ -166,7 +163,7 @@ processReadMessage msg = do
 
             "001" -> doRPL_WELCOME       msg
             "353" -> doRPL_NAMREPLY      msg
-            "366" -> doRPL_ENDOFNAMES      msg
+            "366" -> doRPL_ENDOFNAMES    msg
 -- this leads to looping when length nick >= server_nicklen
 --             "433" -> do
 --                 nick <- getNick
@@ -434,7 +431,7 @@ doDisplay msg = do
                "331" -> (tale, wlast mid, False)
                "332" -> ("Topic: " ++ tale, wlast mid, False)
                "333" -> ("set by " ++ (wnth 3 mid) ++ " at " ++ (time $ read $ wlast mid), wnth 2 mid, False)
---                "353" -> (" Users: " ++ tale, (wlast mid), False)
+--              353 handled by RPL preprocessor
                "671" -> (wnth 2 mid +-+ tale ++ ".", "", False)
                _ | and (map isDigit cmd) -> ((wtail mid) ++ " - " ++ tale, "", False)
                _ -> (" " ++ cmd +-+ rest, "", False)
@@ -463,23 +460,11 @@ doPRIVMSG msg = do
     alltargets = whead (msgMiddle msg)
     targets = split "," alltargets
     text = msgTail msg
-    doPersonalMsg ('@':cmd) _tale _
-        = do let _who = msgNick msg
-             maybecmd <- gets (\s -> Map.lookup cmd (ircCommands s))
-             case maybecmd of
-                           Just (MODULE _m) -> return ()
-                           Nothing         -> return ()
     doPersonalMsg ('\001':"PING") _ mynick = ircWrite $ mkIrcMessageWithPrefix mynick "NOTICE" (msgNick msg) text
     doPersonalMsg _ _ _ = do
         -- this should go away, once new channel tab creation fixed
         addChannel (msgNick msg) True
         liftIO beep
-    -- external modules are called in this next chunk
-    doPublicMsg ('@':cmd) _tale _mynick = do
-        maybecmd <- gets (\s -> Map.lookup cmd (ircCommands s))
-        case maybecmd of 
-                      Just (MODULE _m) -> return ()
-                      Nothing         -> return ()
     doPublicMsg _ _ _ = do
         ircDisplayAlert True $ alltargets ++ ":<" ++ (msgNick msg) ++ "> " ++ text
         liftIO beep
