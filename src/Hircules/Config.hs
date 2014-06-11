@@ -2,21 +2,20 @@ module Hircules.Config (configDir, logDir)
 where
 
 import System.Environment (getEnv)
+import System.FilePath ((</>))
 import System.IO.Unsafe (unsafePerformIO)
-
-import Hircules.Directories ((+/+))
 
 homeDir :: FilePath
 homeDir = unsafePerformIO $ getEnv "HOME"
 
 configDir :: FilePath
-configDir = homeDir +/+ configDirName
+configDir = homeDir </> configDirName
 
 configDirName :: FilePath
 configDirName = ".hircules"
 
 logDir :: FilePath
-logDir = configDir +/+ logDirName
+logDir = configDir </> logDirName
 
 logDirName :: FilePath
 logDirName = "logs"

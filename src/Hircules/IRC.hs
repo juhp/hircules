@@ -55,7 +55,6 @@ module Hircules.IRC (IRC,
 where
 
 import Data.Maybe
-import System.IO (Handle, hGetLine)
 import Control.Concurrent
 import Control.Exception (catch)
 import Control.Monad.Reader
@@ -65,7 +64,7 @@ import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
 import System.Exit
-import System.IO (hClose, hIsEOF, hPutStrLn)
+import System.IO (Handle, hGetLine, hClose, hIsEOF, hPutStrLn)
 
 import Hircules.Channel
 -- import Hircules.Charset
@@ -112,11 +111,11 @@ instance Show IRCMessage where
 		 (if null tale then "" else " " ++ ':':tale)
 
 msgNick :: IRCMessage -> String
-msgNick msg = fst $ break (== '!') (msgPrefix msg)
+msgNick msg = takeWhile (/= '!') (msgPrefix msg)
 
 msgUser :: IRCMessage -> String
 msgUser msg =
-    let rest = snd $ break (== '!') (msgPrefix msg) in
+    let rest = dropWhile (/= '!') (msgPrefix msg) in
     if null rest
        then ""
        else case tail rest of
@@ -145,7 +144,7 @@ setNick :: String -> IRC ()
 setNick name = do
     modify (\ s -> s { ircNick = name })
     chans <- getIRCChannels
-    liftIO $ mapM_ (\ chan -> setNickText chan name) $ filter chanreal chans
+    liftIO $ mapM_ (`setNickText` name) $ filter chanreal chans
 
 ircSignOn :: String -> String -> IRC ()
 ircSignOn nick name
@@ -194,13 +193,13 @@ addChannel name real = do
         joinChanUser nick name
 
 removeChannel :: String -> IRC ()
-removeChannel name = do
+removeChannel name =
     modify (\ s -> s {ircChannels = Map.delete (map toLower name) (ircChannels s)})
 
 ircPrivmsg :: String -> String -> IRC ()
 ircPrivmsg who msg = do
     nick <- getNick
-    if (who /= nick) then mapM_ ircPrivmsg' (lines msg) else return ()
+    when (who /= nick) $ mapM_ ircPrivmsg' (lines msg)
   where
   ircPrivmsg' :: String -> IRC ()
   ircPrivmsg' line = ircWrite (mkIrcMessage "PRIVMSG" who line)
@@ -212,7 +211,7 @@ ircTopic chan topic
 ircQuit :: IRC ()
 ircQuit
   = do  ircWrite (mkIrcMessage "QUIT" "" "")
-        liftIO (exitWith ExitSuccess)
+        liftIO exitSuccess
 
 ircJoin :: String -> IRC ()
 ircJoin loc
@@ -273,8 +272,7 @@ ircDisplayAlert alert str = liftIO $ writeTextLn alertchannel alert str
 
 readerLoop :: ThreadId -> Chan IRCMessage -> Chan IRCMessage -> Handle -> IO ()
 readerLoop threadmain chanR chanW h
-  = do  -- liftIO (putStrLn "Running reader loop...")
-        readerLoop' `catch` ((throwTo threadmain) :: IOError -> IO ())
+  = readerLoop' `catch` (throwTo threadmain :: IOError -> IO ())
   where
     readerLoop' :: IO ()
     readerLoop'
@@ -287,7 +285,7 @@ readerLoop threadmain chanR chanW h
 		   -- remove trailing '^M'
 		   let line = init input  -- [ c | c <- line, c /= '\n', c /= '\r' ]
 		   debugDo $ writeTextRaw $ "r " ++ line
-		   case (whead line) of
+		   case whead line of
 			"PING" -> writeChan chanW $ mkIrcMessage "PONG" "" (tail $ wtail line)
 			_ -> writeChan chanR $ decodeMessage line
 		   readerLoop'
@@ -332,7 +330,7 @@ encodeMessage msg =
   where
     encodePrefix [] = id
     encodePrefix prefix = showChar ':' . showString prefix . showChar ' '
-    encodeCommand cmd = showString cmd
+    encodeCommand = showString
     encodeParams [] = id
     encodeParams p = showChar ' ' . showString p
     encodeTail [] = id
@@ -382,13 +380,13 @@ logMessage :: String -> IRC ()
 logMessage txt = do
    h <- gets ircLogFile
    time <- liftIO timeStamp
-   liftIO $ hPutStrLn h $ time +-+ (encodeString txt)
+   liftIO $ hPutStrLn h $ time +-+ encodeString txt
 
 addChanUsers :: [(String,Bool)] -> String -> IRC ()
 addChanUsers userops ch = do
     mchan <- getIRCChannel ch
     maybeDo_ mchan addChanUsers'
-    mapM_ (addUserChan ch) $ map fst userops
+    mapM_ (addUserChan ch . fst) userops
   where
   addChanUsers' :: IRCChannel -> IRC ()
   addChanUsers' chan = do
@@ -436,7 +434,7 @@ getUserChannels nick = do
 addUserChan :: String -> String -> IRC ()
 addUserChan chan user = do
     chans <- getUserChannels user
-    setUserChans user $ if elem chan chans
+    setUserChans user $ if chan `elem` chans
 			   then chans
 			   else chans ++ [chan]
 

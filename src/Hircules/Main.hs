@@ -21,6 +21,7 @@ import Network (connectTo, withSocketsDo, PortID(..))
 -- import PosixProcEnv (getLoginName)
 import System.Console.GetOpt (getOpt, usageInfo, ArgDescr(..), OptDescr(..), ArgOrder(..))
 import System.Environment (getArgs, getEnv, getProgName)
+import System.FilePath.Posix ((</>))
 import System.Time (ClockTime(..), TimeDiff(..), calendarTimeToString, normalizeTimeDiff, noTimeDiff, timeDiffToString, toCalendarTime)
 import System.IO (BufferMode(..), IOMode(..), hSetBuffering, openFile)
 import System.IO.Unsafe (unsafePerformIO)
@@ -49,22 +50,22 @@ data Flag
 
 options :: [OptDescr Flag]
 options =
- [ Option ['v'] ["version"] (NoArg Version) "show version number"
- , Option ['h'] ["help"] (NoArg Help) "show this message"
- , Option ['D'] ["debug"] (NoArg Debug) "show debugging info"
+ [ Option "v" ["version"] (NoArg Version) "show version number"
+ , Option "h" ["help"] (NoArg Help) "show this message"
+ , Option "D" ["debug"] (NoArg Debug) "show debugging info"
  ]
 
 main :: IO ()
 main = do
     cmdline <- getArgs
-    case (getOpt Permute options cmdline) of
+    case getOpt Permute options cmdline of
          (opts, _, _)
              | Help `elem` opts -> help
              | Version `elem` opts -> putStrLn $ "hircules " ++ showVersion version
          (opts, args, errs)
              | null errs && length args <= 1
                -> main' opts $ unwords args
-             | length errs > 0 -> help >> error (concat errs)
+             | not (null errs) -> help >> error (concat errs)
              | otherwise -> help
 
 progname :: String
@@ -100,7 +101,7 @@ main' opts arg = do
     chanW <- newChan
     threadr <- newThread (readerLoop threadmain chanR chanW s)
     threadw <- newThread (writerLoop threadmain chanW s)
-    h <- liftIO $ openFile (logDir +/+ hostname) AppendMode
+    h <- liftIO $ openFile (logDir </> hostname) AppendMode
     hSetBuffering h LineBuffering
     let rstate = IRCRState ()
         initState =
@@ -123,10 +124,7 @@ main' opts arg = do
     port = if null port' then "6667" else tail port'
     portnum = fromIntegral (read port :: Integer)
     initChans = Map.fromList $ [("%all", allchannel),
-                            ("%alert", alertchannel)] ++
-                                        (if debugging
-                                            then [("%raw", rawchannel)]
-                                            else [])
+                            ("%alert", alertchannel)] ++ [("%raw", rawchannel) | debugging]
 
 ircMain :: IRC ()
 ircMain = do
@@ -241,15 +239,16 @@ doQUIT msg = do
     debug "chans" chans
 --     chanmap <- gets ircChannels
 --     let ichans = mapMaybe (lookupFM chanmap) chans
-    mapM_ (\ chn -> (ircDisplay chn False $ " " ++ (msgNick msg) ++ " has quit (" ++ (msgTail msg) ++ ")") >> partChanUser nick chn) chans
+    mapM_ (\ chn -> ircDisplay chn False (" " ++ msgNick msg ++ " has quit (" ++ msgTail msg ++ ")") >> partChanUser nick chn) chans
     removeUser nick
 
+-- FIXME
 doERROR :: IRCMessage -> IRC ()
-doERROR msg =
-    let tale = msgTail msg in
-    if (take 13 tale) == "Closing Link:"
-       then return () -- reconnectServer
-       else return ()
+doERROR _msg = return ()
+    -- let tale = msgTail msg in
+    -- if take 13 tale == "Closing Link:"
+    --    then return () -- reconnectServer
+    --    else return ()
 
 doPART :: IRCMessage -> IRC ()
 doPART msg = do
@@ -271,14 +270,14 @@ doNICK msg = do
     debug "doNICK" "1"
     when (current == nick) (setNick new)
     debug "doNICK" "2"
-    mapM_ (\ ch -> ircDisplay ch False $ (" " ++ (theuser current "are" "is") +-+ "now known as " ++ new)) chans
+    mapM_ (\ ch -> ircDisplay ch False (" " ++ theuser current "are" "is" +-+ "now known as " ++ new)) chans
     debug "doNICK" "3"
     renameUser nick new
   where
   nick = msgNick msg
   theuser :: String -> String -> String -> String
   theuser you second third =
-        (if you == nick then "You " ++ second else nick +-+ third)
+        if you == nick then "You " ++ second else nick +-+ third
 
 -- doMODE :: IRCMessage -> IRC ()
 -- doMODE msg
@@ -288,7 +287,7 @@ doNICK msg = do
 doTOPIC :: IRCMessage -> IRC ()
 doTOPIC msg = do
     let loc = whead (msgMiddle msg)
-    ircDisplayAlert True $ loc ++ ":" +-+ (msgNick msg) +-+ "has changed the topic to: " ++ (msgTail msg)
+    ircDisplayAlert True $ loc ++ ":" +-+ msgNick msg +-+ "has changed the topic to: " ++ msgTail msg
 
 doRPL_WELCOME :: IRCMessage -> IRC ()
 doRPL_WELCOME msg = do
@@ -297,8 +296,7 @@ doRPL_WELCOME msg = do
   joinMany []
   where
     joinMany :: [String] -> IRC ()
-    joinMany [] = return ()
-    joinMany (c:cs) = ircJoin c >> joinMany cs
+    joinMany = foldr ((>>) . ircJoin) (return ())
 
 -- doRPL_YOURHOST :: IRCMessage -> IRC ()
 -- doRPL_YOURHOST msg = return ()
@@ -358,7 +356,7 @@ doRPL_ENDOFNAMES msg = do
   mchan <- getIRCChannel ch
   maybeDo_ mchan $ \ chan -> do
       let users = Map.toList (chanusers chan)
-          output = show (length users) +-+ "users:" +-+ (unwords . sort . (map concOp)) users
+          output = show (length users) +-+ "users:" +-+ (unwords . sort . map concOp) users
 --           chn = channame chan
       ircDisplayAll $ ch ++ output
       ircDisplay ch False output
@@ -407,14 +405,14 @@ doDisplay msg = do
                                        else "<" ++ user ++ ">" +-+ tale
                                 in
                            (output, if public then chan else msgNick msg, True)
-               "JOIN" -> (" " ++ (theuser "have" ("(" ++ (msgUser msg)  ++ ") has")) ++ "joined", tale, False)
-               "PART" -> (" " ++ (theuser "have" "has") ++ "left", whead mid, False)
+               "JOIN" -> (" " ++ theuser "have" ("(" ++ msgUser msg ++ ") has") ++ "joined", tale, False)
+               "PART" -> (" " ++ theuser "have" "has" ++ "left", whead mid, False)
                "NOTICE" -> ("NOTICE: " ++ rest, "", True)
-               "NICK" -> (" " ++ (theuser "are" "is") ++ "now known as " ++ tale, "", False)
-               "TOPIC" -> (" " ++ (theuser "have" "has") ++ "changed the topic to: " ++ tale, whead mid, True)
-               "QUIT" -> (" " ++ (theuser "have" "has") ++ "quit" ++ " (" ++ tale ++ ")", "", False)
+               "NICK" -> (" " ++ theuser "are" "is" ++ "now known as " ++ tale, "", False)
+               "TOPIC" -> (" " ++ theuser "have" "has" ++ "changed the topic to: " ++ tale, whead mid, True)
+               "QUIT" -> (" " ++ theuser "have" "has" ++ "quit" ++ " (" ++ tale ++ ")", "", False)
                "PONG" -> ("Ping reply from " ++ tale, "", True)
-               "MODE" -> (" " ++ (theuser "have" "has") ++ "changed mode " ++ (wtail mid), whead mid, False)
+               "MODE" -> (" " ++ theuser "have" "has" ++ "changed mode " ++ wtail mid, whead mid, False)
                -- whois
                "311" -> let idname = wtail mid
                             uid = whead idname
@@ -424,16 +422,16 @@ doDisplay msg = do
                         (uid +-+ "is" +-+ tale +-+ "(" ++ user' ++ "@" ++ machine ++ ").", "", False)
                "312" -> (wnth 2 mid +-+ "is on" +-+ (wtail . wtail) mid +-+ "(" ++ tale ++ ").", "", False)
                "317" -> let rest' = (wtail . wtail) mid in
-                        (wnth 2 mid +-+ (timeDiffToString $ normalizeTimeDiff $ noTimeDiff { tdSec = read $ whead rest' }) +-+ "idle, on since " ++ (time $ read $ wtail rest') ++ ".", "", False)
+                        (wnth 2 mid +-+ timeDiffToString (normalizeTimeDiff $ noTimeDiff { tdSec = read $ whead rest' }) +-+ "idle, on since " ++ time (read $ wtail rest') ++ ".", "", False)
                "318" -> ("", "",False)
                "319" -> ("channels: " ++ tale, "", False)
                "330" -> (wnth 2 mid +-+ tale +-+ wlast mid ++ ".", "", False)
                "331" -> (tale, wlast mid, False)
                "332" -> ("Topic: " ++ tale, wlast mid, False)
-               "333" -> ("set by " ++ (wnth 3 mid) ++ " at " ++ (time $ read $ wlast mid), wnth 2 mid, False)
+               "333" -> ("set by " ++ wnth 3 mid ++ " at " ++ time (read $ wlast mid), wnth 2 mid, False)
 --              353 handled by RPL preprocessor
                "671" -> (wnth 2 mid +-+ tale ++ ".", "", False)
-               _ | and (map isDigit cmd) -> ((wtail mid) ++ " - " ++ tale, "", False)
+               _ | all isDigit cmd -> (wtail mid ++ " - " ++ tale, "", False)
                _ -> (" " ++ cmd +-+ rest, "", False)
     where
     rest = mid +-+ tale
@@ -443,8 +441,8 @@ doDisplay msg = do
     theuser second third =
         (if user == mynick then "You " ++ second else user +-+ third) ++ " "
     formatCTCP :: String -> String
-    formatCTCP ctxt | whead ctxt == "ACTION" = user +-+ (wtail ctxt)
-    formatCTCP ctxt = user ++ ": " ++ (wtail ctxt)
+    formatCTCP ctxt | whead ctxt == "ACTION" = user +-+ wtail ctxt
+    formatCTCP ctxt = user ++ ": " ++ wtail ctxt
 
 doPRIVMSG :: IRCMessage -> IRC ()
 doPRIVMSG msg = do
@@ -455,7 +453,7 @@ doPRIVMSG msg = do
             -> let rest = wtail text
                    (cmd,params) = (whead rest,wtail rest) in
                doPublicMsg cmd params mynick
-      _ | otherwise -> return ()
+      _ -> return ()
     where
     alltargets = whead (msgMiddle msg)
     targets = split "," alltargets
@@ -466,7 +464,7 @@ doPRIVMSG msg = do
         addChannel (msgNick msg) True
         liftIO beep
     doPublicMsg _ _ _ = do
-        ircDisplayAlert True $ alltargets ++ ":<" ++ (msgNick msg) ++ "> " ++ text
+        ircDisplayAlert True $ alltargets ++ ":<" ++ msgNick msg ++ "> " ++ text
         liftIO beep
 
 processInput :: Interactive -> IRC ()
@@ -491,7 +489,7 @@ processInput (strss, ch) = do
            logMessage alltext
            let msg = mkIrcMessage cmd middle tale
            case cmd of
-                    "JOIN" | (not $ null middle) -> do
+                    "JOIN" | not $ null middle -> do
                               let chann = whead middle
                               chans <- getUserChannels nick
                               if elem chann chans || head chann == '%'
@@ -523,14 +521,14 @@ processInput (strss, ch) = do
                                    String, -- tail
                                    Bool) -- noslash
     parseCmd [] = Nothing
-    parseCmd (('/':cmd):[]) | and $ map isAlpha cmd =
+    parseCmd (('/':cmd):[]) | all isAlpha cmd =
       case cmd of
            "join" | publicChan -> Just (ircCmd cmd, ch, "", False)
            "mode" | publicChan -> Just (ircCmd cmd, ch, "", False)
            "names" | publicChan -> Just (ircCmd cmd, ch, "", False)
            "part" | chanreal chan -> Just (ircCmd cmd, ch, "", False)
            "topic" | publicChan -> Just (ircCmd cmd, "", ch, False)
-           "quit" -> Just (ircCmd cmd, "", ("hircules" +-+ showVersion version), False)
+           "quit" -> Just (ircCmd cmd, "", "hircules" +-+ showVersion version, False)
            _ -> Just (ircCmd cmd, "", "", False)
     parseCmd (("/me"):_) | chanreal chan = Just ("PRIVMSG", ch, ctcpQuote $ "ACTION" +-+ rest, True)
     parseCmd (("/quit"):_) = Just ("QUIT", "", rest, True)
@@ -538,16 +536,16 @@ processInput (strss, ch) = do
     parseCmd (("/mode"):_) | head rest /= '#' = Just ("MODE", ch +-+ rest, "", True)
     parseCmd (("/raw"):_) = Just (whead rest, wtail rest, "", True)
     parseCmd (("/topic"):_) | head rest /= '#' = Just ("TOPIC", ch, rest, True)
-    parseCmd (('/':cmd):_) | and $ map isAlpha cmd =
+    parseCmd (('/':cmd):_) | all isAlpha cmd =
       let (middle,tale) = breakString " :" rest in
       Just (ircCmd cmd,if null tale then whead middle else middle, if null tale then wtail middle else tale, False)
     parseCmd _ = 
-      if (chanreal chan)
+      if chanreal chan
          then Just ("PRIVMSG", ch, input, True)
          else Nothing
     ircCmd :: String -> String
 --     ircCmd "msg" = "PRIVMSG"
-    ircCmd cmd = map toUpper cmd
+    ircCmd = map toUpper
 --   startColon :: String -> Bool
 --   startColon (':':_) = True
 --   startColon _ = False

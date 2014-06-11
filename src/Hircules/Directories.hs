@@ -1,15 +1,11 @@
-module Hircules.Directories ((+/+),
+module Hircules.Directories (
 --                             dirname, basename,
                              makeDirectory)
 where
 
+import Control.Monad (unless)
 import System.Directory (createDirectory, doesDirectoryExist)
 --import System.FilePath
-
-(+/+) :: String -> String -> String
-(+/+) s1 s2 =
-    (if last s1 == '/' then s1 else s1 ++ "/") ++
-    (if (not . null ) s2 && head s2 == '/' then tail s2 else s2)
 
 -- dirname :: FilePath -> FilePath
 -- dirname = joinSegments . init . pathSegments
@@ -31,6 +27,5 @@ import System.Directory (createDirectory, doesDirectoryExist)
 makeDirectory :: FilePath -> IO ()
 makeDirectory dir = do
     exists <- doesDirectoryExist dir
-    if exists
-       then return ()
-       else putStrLn ("creating " ++ dir) >> createDirectory dir
+    unless exists $
+      putStrLn ("creating " ++ dir) >> createDirectory dir

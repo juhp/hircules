@@ -73,7 +73,7 @@ toMainWidget :: ContainerClass a => a -> MainWidget
 toMainWidget = castToContainer
 
 mainwidget :: MVar MainWidget
-mainwidget = unsafePerformIO $ newEmptyMVar
+mainwidget = unsafePerformIO newEmptyMVar
 
 mainwindow :: Window
 mainwindow = unsafePerformIO windowNew
@@ -150,7 +150,7 @@ displayChannelTab switch chan = do
              (Just p) -> return p
              Nothing -> do
                   n <- notebookGetNPages book
-                  let lbltxt = show (n + 1) ++ " " ++ (channame chan)
+                  let lbltxt = show (n + 1) ++ " " ++ channame chan
                   label <- labelNew $ Just lbltxt
                   menulabel <- labelNew $ Just lbltxt
                   _ <- notebookAppendPageMenu book mainbox label menulabel
@@ -170,7 +170,7 @@ newIRCchannel title nick real = do
   set e [textTagEditable := True]
   ne <- textTagNew $ Just "not-editable"
   set ne [textTagEditable := False]
-  font <- textTagNew $ Nothing
+  font <- textTagNew Nothing
   set font [textTagFamily := "Monospace"]
   textTagTableAdd tTable e
   textTagTableAdd tTable ne
@@ -204,7 +204,7 @@ newIRCchannel title nick real = do
   entrymark <- textBufferCreateMark buffer Nothing entry True
   nend <- textBufferGetIterAtMark buffer nickend'
   nickend <- textBufferCreateMark buffer Nothing nend False
-  let result = IRCChan {chanbuffer = buffer, channame = (map toLower title), chanreal = real, chanend = endmark, channick = nickend, chanbox = toMainWidget scrollwin, chanentry = entrymark, chanview = view, chanusers = empty, chantopic = "", chancoding = Nothing}
+  let result = IRCChan {chanbuffer = buffer, channame = map toLower title, chanreal = real, chanend = endmark, channick = nickend, chanbox = toMainWidget scrollwin, chanentry = entrymark, chanview = view, chanusers = empty, chantopic = "", chancoding = Nothing}
   keymap <- newKeymap
   mapM_ (keymapAdd keymap) $ bufferKeyBindings result
   _ <- onKeyPress view $ keyPressCB keymap
@@ -213,27 +213,23 @@ newIRCchannel title nick real = do
   return result
 
 hideCurrentChannel :: IO ()
-hideCurrentChannel = do
+hideCurrentChannel =
   notebookGetCurrentPage book >>= doRemoveNthPage
 
 hideIRCchannel :: IRCChannel -> IO ()
 hideIRCchannel chan = do
   total <- notebookGetNPages book
-  if total <= 1
-     then return ()
-     else do
-          let mainbox = chanbox chan
-          p <- notebookPageNum book mainbox
-          maybeDo_ p doRemoveNthPage
+  unless (total <= 1) $ do
+    let mainbox = chanbox chan
+    p <- notebookPageNum book mainbox
+    maybeDo_ p doRemoveNthPage
 
 doRemoveNthPage :: Int -> IO ()
 doRemoveNthPage page = do
   total <- notebookGetNPages book
-  if total <= 1
-     then return ()
-     else do
-          notebookRemovePage book page
-          updateTabLabels
+  unless (total <= 1) $ do
+    notebookRemovePage book page
+    updateTabLabels
 
 updateTabLabels :: IO ()
 updateTabLabels = return ()
@@ -268,7 +264,7 @@ writeTextLn chan alert str = do
   cleanup = reverse . dropWhile isSpace . reverse 
 
 writeTextRaw :: String -> IO ()
-writeTextRaw str = writeTextLn rawchannel True str
+writeTextRaw = writeTextLn rawchannel True
 
 timeStamp :: IO String
 timeStamp = do
@@ -297,7 +293,7 @@ updateChannelTab chan alert = do
   current <- notebookGetCurrentPage book
   case page of
       (Just p) -> do
-          let text = show (p + 1) ++ " " ++ (channame chan)
+          let text = show (p + 1) ++ " " ++ channame chan
               markup = if alert && current /= p
                           then highlightText text
                           else text
@@ -337,8 +333,7 @@ updateTabN n = do
 
 -- FIXME todo
 renameChannelTab :: Channel -> Channel -> IO ()
-renameChannelTab _old _new = do
-    return ()    
+renameChannelTab _old _new = return ()
 
 lastSearchText :: MVar String
 lastSearchText = unsafePerformIO $ newMVar ""
@@ -353,13 +348,11 @@ searchChannel chan backwds = do
                     slctIter <- textBufferGetSelectionBound buffer >>= textBufferGetIterAtMark buffer
                     textBufferGetText buffer startIter slctIter False
                else readMVar lastSearchText
-    if null text
-       then return ()
-       else do
-            _ <- swapMVar lastSearchText text
-            result <- (if backwds then textIterBackwardSearch else textIterForwardSearch) startIter text [] Nothing
-            maybe (return ()) (\ (start, end) -> do
-                               textBufferPlaceCursor buffer (if backwds then start else end)
-                               textBufferMoveMarkByName buffer "selection_bound" (if backwds then end else start)
-                               textBufferGetInsert buffer >>= textViewScrollMarkOnscreen (chanview chan))
-                             result
+    unless (null text) $ do
+      _ <- swapMVar lastSearchText text
+      result <- (if backwds then textIterBackwardSearch else textIterForwardSearch) startIter text [] Nothing
+      maybe (return ()) (\ (start, end) -> do
+                            textBufferPlaceCursor buffer (if backwds then start else end)
+                            textBufferMoveMarkByName buffer "selection_bound" (if backwds then end else start)
+                            textBufferGetInsert buffer >>= textViewScrollMarkOnscreen (chanview chan))
+        result

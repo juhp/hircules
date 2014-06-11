@@ -24,15 +24,16 @@ Executable hircules
     main-is:       Main.hs
     ghc-options:   -Wall
     build-depends: base >= 4 && < 5,
-                   gtk >= 0.11.0,
-                   utf8-string,
-                   time,
                    containers,
-                   mtl,
                    directory,
+                   filepath,
+                   gtk >= 0.11.0,
+                   mtl,
                    network,
                    old-time,
-                   old-locale
+                   old-locale,
+                   time,
+                   utf8-string
     other-modules: Control.Monad.MaybeDo,
                    Debug.State,
                    Graphics.UI.Gtk.Keymap,

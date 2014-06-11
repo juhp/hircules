@@ -22,7 +22,7 @@ wlast :: String -> String
 wlast = last . words
 
 wnth :: Int -> String -> String
-wnth n cs | (n > 1 && n <= length ws) = ws !! (n-1)
+wnth n cs | n > 1 && n <= length ws = ws !! (n-1)
   where
   ws = words cs
 wnth _ _ = ""

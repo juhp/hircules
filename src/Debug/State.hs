@@ -10,16 +10,14 @@ debugging :: MVar Bool
 debugging = unsafePerformIO $ newMVar False
 
 setDebug :: Bool -> IO Bool
-setDebug st =
-    do swapMVar debugging st
+setDebug =
+    swapMVar debugging
 
 debug :: (Show a, MonadIO m) => String -> a -> m ()
-debug txt v =
-    do
+debug txt v = do
     dbg <- liftIO $ readMVar debugging
     when dbg $
-      liftIO $ do
-          putStrLn $ txt ++ ": " ++ show v
+      liftIO $ putStrLn $ txt ++ ": " ++ show v
 
 debugDo :: MonadIO m => m () -> m ()
 debugDo act = do
